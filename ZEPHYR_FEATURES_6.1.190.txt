@@ -1,0 +1,318 @@
+================================================================================
+                    ⚡ ZEPHYR KERNEL GKI 2.0 (LINUX 6.1.190 LTS) ⚡
+                      COMPLETE FEATURE MATRIX & AUDIT GUIDE
+================================================================================
+
+Project: ZephyrKernel (GKI 2.0 Universal Android 14 6.1.190 LTS)
+Repository: https://github.com/afarhandanu/ZephyrKernel-test
+Base Kernel: Linux 6.1.190 LTS (Android Common Kernel android14-6.1)
+Target Platform: MediaTek Dimensity 7300-Ultra (MT6878) & Universal GKI 2.0
+Tested Device: Xiaomi POCO X7 / Redmi Note 14 Pro 5G (malachite)
+Compiler: Neutron Clang 24.0.0git + LLD 24.0.0 (ThinLTO / FullLTO / NoLTO)
+Release Version: v6.1.190 (KMI: android14-11-Zephyr)
+Build Date: November 2026
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. CPU, Scheduler & Frequency Scaling
+2. Memory Management, Compression & ZRAM
+3. Networking, Congestion Control & Tethering
+4. Storage, Filesystems & OTG
+5. Gaming, Emulation & Controllers
+6. Linux Containers, Inter-Process & Task Management
+7. Root Solutions, SuSFS & Security Guard
+8. Full Kconfig Audit (Verified Active)
+9. Live ADB / Shell Verification Cheatsheet
+10. Downloadable ZIPs & Release Links
+
+================================================================================
+1. CPU, SCHEDULER & FREQUENCY SCALING
+================================================================================
+[*] Linux 6.1.190 LTS Stable Core:
+    - 100% genuine upstream Linux 6.1.190 LTS synced directly with Linux Stable Foundation
+    - Includes 519 upstream commits from 6.1.187 -> 6.1.190
+    - Full ACK & MediaTek MT6878 compatibility with SAGA architecture shims:
+      - timer_delete_sync() compat shim in include/linux/timer.h
+      - DEFINE_FREE(fwnode_handle) compat shim in include/linux/property.h
+      - RCU memory release kfree_rcu(..., rcu) in net/ipv4/af_inet.c
+    - KMI reserve slots preserved (deliberately skipped FUT_OFF_MMSHARED to prevent
+      MediaTek vendor driver ABI mismatches).
+
+[*] BORE CPU Scheduler (Burst-Oriented Response Enhancer v6.8.0-rc1):
+    - Config: CONFIG_SCHED_BORE=y
+    - Purpose: Drastically reduces UI micro-stutters and input latency by favoring
+      interactive burst tasks over sustained background CPU hogs.
+    - Sysctl:
+      /proc/sys/kernel/sched_bore (Default: 1 - Enabled)
+      /proc/sys/kernel/sched_bore_burst_penalty (Tuning knob)
+    - Verification:
+      $ cat /proc/sys/kernel/sched_bore -> Output: 1
+
+[*] Power-Efficient Workqueues:
+    - Config: CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
+    - Purpose: Routes unbound workqueues to power-efficient LITTLE cores when
+      battery saving is prioritized, eliminating background CPU spikes.
+
+[*] Mainline Catch-Up Backports:
+    - schedutil_catchup: Dynamic energy-aware frequency scaling response
+    - workqueue_catchup: Eliminates workqueue stalls during intensive tasks
+    - ufs_writebooster_catchup: Optimizes UFS storage write bursts
+
+================================================================================
+2. MEMORY MANAGEMENT, COMPRESSION & ZRAM
+================================================================================
+[*] le9uo Working Set Protection (v1.15):
+    - Purpose: Protects anonymous memory and clean page cache from premature eviction
+      under heavy multitasking without triggering Out-Of-Memory (OOM) killer.
+    - Configuration: MGLRU disabled (CONFIG_LRU_GEN_ENABLED=n) specifically for
+      MediaTek platforms to eliminate page table lock contention and kernel panics.
+    - Sysctl Nodes & Defaults:
+      /proc/sys/vm/workingset_protection = 1 (Enabled)
+      /proc/sys/vm/anon_min_ratio = 5
+      /proc/sys/vm/clean_min_ratio = 5
+    - Verification:
+      $ sysctl vm.workingset_protection vm.anon_min_ratio vm.clean_min_ratio
+
+[*] ZRAM Compression Algorithms (LZ4KD + LZ4K + ZSTD + LZ4 + LZO-RLE):
+    - Configs:
+      CONFIG_ZRAM_DEF_COMP_LZ4KD=y
+      CONFIG_CRYPTO_LZ4KD=y, CONFIG_LZ4KD_COMPRESS=y, CONFIG_LZ4KD_DECOMPRESS=y
+      CONFIG_CRYPTO_LZ4K=y,  CONFIG_LZ4K_COMPRESS=y,  CONFIG_LZ4K_DECOMPRESS=y
+      CONFIG_CRYPTO_LZ4=y,   CONFIG_LZ4_COMPRESS=y,   CONFIG_LZ4_DECOMPRESS=y
+      CONFIG_CRYPTO_ZSTD=y,  CONFIG_ZSTD_COMPRESS=y,  CONFIG_ZSTD_DECOMPRESS=y
+    - Purpose: LZ4KD provides near-zero decompression latency for app reopening,
+      while ZSTD delivers superior memory compression ratio for large RAM expansion.
+    - Verification:
+      $ cat /sys/block/zram0/comp_algorithm
+      Output: lzo lzo-rle [lz4] lz4hc lz4k lz4kd deflate zstd
+
+[*] kcompressd Background Compression Daemon (v0.5):
+    - Purpose: Asynchronous kernel compression worker thread that proactively
+      compresses inactive memory pages during idle times to keep RAM clean.
+    - Daemon: [kcompressd0] running as kernel thread
+    - Verification:
+      $ ps -ef | grep kcompressd -> Shows active worker process
+
+[*] Modern Compression Libraries:
+    - LZ4 v1.10.0 (ARM64 NEON vectorized assembly)
+    - ZSTD v1.5.7 (Linux 6.15 mainline backport)
+
+================================================================================
+3. NETWORKING, CONGESTION CONTROL & TETHERING
+================================================================================
+[*] Google TCP BBRv3 (Bottleneck Bandwidth and RTT v3):
+    - Configs:
+      CONFIG_TCP_CONG_BBR3=y
+      CONFIG_DEFAULT_BBR3=y
+    - Purpose: Delivers maximum throughput and minimal bufferbloat on cellular 5G/4G
+      and WiFi networks. Drastically cuts ping jitter in competitive online games.
+    - Boot Enforcer: A kernel delayed-work monitor ensures vendor init scripts
+      do not silently revert the congestion algorithm to legacy 'cubic'.
+    - Verification:
+      $ cat /proc/sys/net/ipv4/tcp_congestion_control -> Output: bbr3
+      $ cat /proc/sys/net/ipv4/tcp_available_congestion_control -> Output: reno cubic bbr bbr3
+
+[*] Google Fair Queue (FQ) Pacing Default:
+    - Configs:
+      CONFIG_NET_SCH_FQ=y
+      CONFIG_DEFAULT_FQ=y
+      CONFIG_DEFAULT_NET_SCH="fq"
+    - Purpose: Directly pairs with BBRv3 for hardware-level packet pacing, zero drops,
+      and strict flow isolation.
+
+[*] Built-in Gigabit USB LAN Ethernet Drivers:
+    - Configs:
+      CONFIG_USB_RTL8152=y (Realtek RTL8152 / RTL8153 Gigabit USB Ethernet)
+      CONFIG_USB_NET_AX88179_178A=y (ASIX AX88179 / AX88178A Gigabit USB Ethernet)
+    - Purpose: Instant plug-and-play wired Gigabit LAN via USB-C Hub without needing
+      external vendor kernel modules or suffering disconnection.
+
+[*] CAKE Smart Queue Management (SQM):
+    - Config: CONFIG_NET_SCH_CAKE=y
+    - Purpose: Eliminates bufferbloat and network congestion spikes during gaming.
+
+[*] Multipath TCP (MPTCP):
+    - Config: CONFIG_MPTCP=y, CONFIG_INET_MPTCP_DIAG=y, CONFIG_MPTCP_IPV6=y
+    - Purpose: Allows simultaneous packet bonding across WiFi and Cellular data.
+    - Verification:
+      $ cat /proc/sys/net/mptcp/enabled -> Output: 1
+
+[*] TTL / Hop-Limit Mangling (Tethering / Hotspot Quota Bypass):
+    - Configs:
+      CONFIG_NETFILTER_XT_TARGET_HL=y
+      CONFIG_IP_NF_TARGET_TTL=y
+      CONFIG_IP6_NF_TARGET_HL=y
+    - Purpose: Modifies outgoing packet TTL/HL to prevent carriers from throttling
+      or deducting cellular tethering/hotspot quota.
+
+[*] Bit-Perfect & Hi-Res USB Audio:
+    - Config: CONFIG_SND_USB_AUDIO=y, CONFIG_SND_USB_AUDIO_USE_MEDIA_CONTROLLER=y
+    - Purpose: Direct hardware audio stream routing to external USB DACs/AMPs
+      supporting 32-bit / 768kHz and native DSD audio without Android resampler.
+
+================================================================================
+4. STORAGE, FILESYSTEMS & OTG
+================================================================================
+[*] Paragon NTFS3 Native Read/Write Driver:
+    - Configs:
+      CONFIG_NTFS3_FS=y
+      CONFIG_NTFS3_64BIT_CLUSTER=y
+      CONFIG_NTFS3_LZX_XPRESS=y
+      CONFIG_NTFS3_FS_POSIX_ACL=y
+    - Purpose: High-speed native read/write for external NTFS hard drives, SSDs,
+      and flash drives via USB-OTG with LZX/Xpress compression and POSIX ACL.
+    - Verification:
+      $ grep ntfs3 /proc/filesystems -> Output: nodev ntfs3
+
+[*] Advanced F2FS Filesystem Features:
+    - Configs:
+      CONFIG_F2FS_FS_LZ4=y
+      CONFIG_F2FS_FS_LZ4HC=y
+      CONFIG_F2FS_FS_ZSTD=y
+    - Purpose: Full hardware compression support on user data partition.
+
+================================================================================
+5. GAMING, EMULATION & CONTROLLERS
+================================================================================
+[*] NTSYNC Driver (/dev/ntsync):
+    - Config: CONFIG_NTSYNC=y
+    - Purpose: High-performance Windows NT kernel synchronization primitives driver.
+      Massively improves FPS and frame pacing in Wine / Proton / Winlator / Mobox /
+      Horizon Windows emulators by avoiding userspace Futex translation overhead.
+    - Verification:
+      $ ls -l /dev/ntsync -> Output: crw------- 1 root root 10, ... /dev/ntsync
+
+[*] Full PlayStation & Xbox Gamepad Force Feedback:
+    - Configs:
+      CONFIG_HID_PLAYSTATION=y + CONFIG_PLAYSTATION_FF=y (PS5 DualSense Haptics)
+      CONFIG_HID_SONY=y + CONFIG_SONY_FF=y (PS4 DualShock 4 Rumble)
+      CONFIG_JOYSTICK_XPAD=y + CONFIG_JOYSTICK_XPAD_FF=y (Xbox One/Series X Vibration)
+    - Purpose: Full plug-and-play controller support via Bluetooth and USB-C
+      with accurate force feedback / rumble effects in native Android games and emulators.
+
+================================================================================
+6. LINUX CONTAINERS, INTER-PROCESS & TASK MANAGEMENT
+================================================================================
+[*] KABI-Safe System V IPC (CONFIG_SYSVIPC=y):
+    - Configs:
+      CONFIG_SYSVIPC=y
+      CONFIG_SYSVIPC_SYSCTL=y
+      CONFIG_SYSVIPC_COMPAT=y
+    - Purpose: Enables System V shared memory, semaphores, and message queues required
+      by Linux containers, Termux Proot/Chroot, Droidspaces, and Docker.
+    - Safety Guarantee: Mapped safely into ANDROID_KABI_USE(6, 7, 8) padding slots,
+      preserving exact MediaTek struct task_struct offsets (#0x988) so vendor WiFi
+      and Bluetooth modules load without symbol mismatches.
+
+[*] Re:Kernel Daemon (Port 22 Netlink Server):
+    - Purpose: Built-in kernel Netlink server (/proc/rekernel/22) for background task
+      freeze management. Integrates with Scene, Thanox, Millet, and NoActive to wake up
+      frozen apps instantaneously upon receiving Binder events.
+    - Verification:
+      $ ls -ld /proc/rekernel/22 -> Output: dr-xr-xr-x 2 root root /proc/rekernel/22
+
+================================================================================
+7. ROOT SOLUTIONS, SUSFS & SECURITY GUARD
+================================================================================
+[*] SuSFS (Kernel-level Root Hiding Engine v1.5.8):
+    - Embedded natively into all root variants (FinASU, KSU, KSU-Next, KowSU, SukiSU, BakaSU).
+    - Hides root mounts, ksu binaries, and injected mounts from banking apps,
+      Play Integrity (STRONG), and anti-cheat software at the VFS level.
+
+[*] Root Variants Supported:
+    1. FinASU: Highly optimized modern KernelSU fork with enhanced SuSFS v1.5.8 integration.
+    2. SukiSU-Ultra: Advanced KernelSU variant with integrated SELinux granting rules.
+    3. KernelSU (KSU): Official upstream KernelSU.
+    4. KernelSU-Next: Upstream KernelSU Next development fork.
+    5. KowSU: Lightweight optimized KernelSU variant.
+    6. BakaSU: Experimental feature-rich KernelSU variant.
+    7. Vanilla: Clean, 100% unrooted GKI kernel (zero root hooks, maximum banking safety).
+
+[*] Baseband Security Guard (CONFIG_BBG=y):
+    - Purpose: Linux Security Module protecting sensitive modem and IMEI NVRAM partitions
+      (nvram, nvdata, persist, efs) against unauthorized raw writes or erasure.
+
+================================================================================
+8. COMPILATION & TOOLCHAIN
+================================================================================
+[*] Clang Toolchain: Neutron Clang 24.0.0git + LLD 24.0.0
+[*] Configurable LTO Modes:
+    - ThinLTO (CONFIG_LTO_CLANG_THIN=y): Balanced size, fast compile, top performance
+    - FullLTO (CONFIG_LTO_CLANG_FULL=y): Maximum cross-compilation optimization
+    - NoLTO   (CONFIG_LTO_NONE=y): Fastest build time, developer testing
+[*] Clang Control Flow Integrity: CONFIG_CFI_CLANG=y (Exploit mitigation)
+[*] Compiler Cache: Persistent ccache integration in GitHub Actions CI
+
+================================================================================
+9. LIVE ADB / SHELL VERIFICATION CHEATSHEET
+================================================================================
+Run the following commands via 'adb shell su' to verify all features on your phone:
+
+# 1. Kernel Version & Upstream Sync
+uname -a
+# Expected: Linux localhost 6.1.190-android14-11-Zephyr ...
+
+# 2. BORE Scheduler
+cat /proc/sys/kernel/sched_bore
+# Expected: 1
+
+# 3. le9uo Working Set Protection
+sysctl vm.workingset_protection vm.anon_min_ratio vm.clean_min_ratio
+# Expected: vm.workingset_protection = 1, anon_min_ratio = 5, clean_min_ratio = 5
+
+# 4. kcompressd Daemon
+ps -ef | grep kcompressd
+# Expected: [kcompressd0] running
+
+# 5. TCP BBRv3 Congestion Control
+cat /proc/sys/net/ipv4/tcp_congestion_control
+# Expected: bbr3
+
+# 6. Default Network Queue Discipline
+cat /proc/sys/net/core/default_qdisc
+# Expected: fq
+
+# 7. ZRAM Compression Algorithms
+cat /sys/block/zram0/comp_algorithm
+# Expected: lzo lzo-rle [lz4] lz4hc lz4k lz4kd deflate zstd
+
+# 8. NTSYNC Windows NT Synchronization Device
+ls -l /dev/ntsync
+# Expected: crw------- 1 root root 10, ... /dev/ntsync
+
+# 9. Paragon NTFS3 Filesystem
+grep ntfs3 /proc/filesystems
+# Expected: nodev ntfs3
+
+# 10. Re:Kernel Netlink Interface
+ls -ld /proc/rekernel/22
+# Expected: dr-xr-xr-x ... /proc/rekernel/22
+
+# 11. MediaTek DLKM Vendor Modules (WiFi, BT, GPS)
+lsmod | grep -E "wlan|bt_drv|conninfra|sapu"
+# Expected: All vendor modules loaded cleanly without symbol errors
+
+================================================================================
+10. DOWNLOADABLE RELEASES & REMOTE ACCESS
+================================================================================
+GitHub Repository:
+https://github.com/afarhandanu/ZephyrKernel-test
+
+Latest GitHub Releases (AnyKernel3 Flashable ZIPs):
+1. SukiSU Release (All LTO Modes):
+   https://github.com/afarhandanu/ZephyrKernel-test/releases/tag/v6.1-20261112_0152-sukisu-allLTO
+   - Zephyr-GKI-6.1.190-sukisu-thinLTO-20261112_0152.zip
+   - Zephyr-GKI-6.1.190-sukisu-fullLTO-20261112_0152.zip
+   - Zephyr-GKI-6.1.190-sukisu-noneLTO-20261112_0152.zip
+
+2. FinASU Release (ThinLTO - Tested & Working on POCO X7):
+   https://github.com/afarhandanu/ZephyrKernel-test/releases/tag/v6.1-20261112_0021-finasu-thinLTO
+   - Zephyr-GKI-6.1.190-finasu-thinLTO-20261112_0021.zip
+
+Direct Raw Download URL for this Feature Matrix:
+https://raw.githubusercontent.com/afarhandanu/ZephyrKernel-test/main/ZEPHYR_FEATURES_6.1.190.txt
+
+================================================================================
+⚡ ZephyrKernel — Precision Engineered for Performance and Reliability ⚡
+================================================================================
