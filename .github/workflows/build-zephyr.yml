@@ -271,8 +271,7 @@ jobs:
           elif [ "$VARIANT" = "kowsu" ]; then
             curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU/master/kernel/setup.sh" | bash -s master
             KSU_DIR="KernelSU"
-            (cd "$KSU_DIR" && git fetch origin 6ecdd69224fe6769e6c8715a4ef2b91602b23362 && git checkout -f 6ecdd69224fe6769e6c8715a4ef2b91602b23362)
-            curl -LSs "https://raw.githubusercontent.com/dikafarabian/workbench/main/kernel/ksu/susfs/patches/10_enable_susfs_for_kowsu.patch" | (cd "$KSU_DIR" && patch -p1 --fuzz=3 --forward)
+            (cd "$KSU_DIR" && patch -p1 --fuzz=3 --forward < ../../workbench/kernel/ksu/susfs/patches/10_enable_susfs_for_kowsu.patch)
           elif [ "$VARIANT" = "ksu" ]; then
             curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
             KSU_DIR="KernelSU"
