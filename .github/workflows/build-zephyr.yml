@@ -117,6 +117,9 @@ jobs:
           echo "Applying ZRAM/Binder swapops unlocked migration page panic fix..."
           sed -i 's/BUG_ON(!PageLocked(p));/WARN_ON_ONCE(!PageLocked(p));/' kernel/include/linux/swapops.h
           grep -q "WARN_ON_ONCE(!PageLocked(p));" kernel/include/linux/swapops.h
+          echo "Applying OpenSSL 3 certs/extract-cert.c key_pass fix..."
+          sed -i 's/#ifdef USE_PKCS11_ENGINE/#ifndef OPENSSL_NO_ENGINE/' kernel/certs/extract-cert.c
+          grep -q "#ifndef OPENSSL_NO_ENGINE" kernel/certs/extract-cert.c
       - name: Load Device Verified Working Config (zephyr_defconfig)
         run: |
           echo "Applying verified KMI-compatible config from device..."
@@ -456,7 +459,7 @@ jobs:
   release:
     name: Publish Unified GitHub Release
     needs: [setup-matrix, build]
-    if: ${{ always() && !cancelled() && inputs.publish_release }}
+    if: ${{ !cancelled() && needs.build.result == 'success' && inputs.publish_release }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout ZephyrKernel Repository
@@ -494,7 +497,8 @@ jobs:
             echo ""
             echo "### 📦 SHA-256 Checksums"
             echo "\`\`\`text"
-            (cd release_assets && sha256sum *.zip)
+            mkdir -p release_assets
+            (cd release_assets && sha256sum *.zip 2>/dev/null || true)
             echo "\`\`\`"
           } > release_notes.md
 
