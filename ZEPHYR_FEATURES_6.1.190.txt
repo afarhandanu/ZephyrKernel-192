@@ -54,10 +54,13 @@ TABLE OF CONTENTS
     - Purpose: Routes unbound workqueues to power-efficient LITTLE cores when
       battery saving is prioritized, eliminating background CPU spikes.
 
-[*] Mainline Catch-Up Backports:
+[*] Mainline Catch-Up & ARM64 Scheduler/Memory Backports:
     - schedutil_catchup: Dynamic energy-aware frequency scaling response
     - workqueue_catchup: Eliminates workqueue stalls during intensive tasks
     - ufs_writebooster_catchup: Optimizes UFS storage write bursts
+    - clear_page 16-byte align (Sultan): Reduces CPU cycles when zeroing RAM pages
+    - DSU CACHE_HOT_BUDDY=false (Sultan): Leverages ARM64 DynamIQ shared L3 cache
+    - Idle CPU scan order (Mainline): Skips re-checking already verified target CPU
 
 ================================================================================
 2. MEMORY MANAGEMENT, COMPRESSION & ZRAM
@@ -186,12 +189,16 @@ TABLE OF CONTENTS
     - Verification:
       $ grep cifs /proc/filesystems -> Output: nodev cifs
 
-[*] Advanced F2FS Filesystem Features:
+[*] Advanced F2FS Filesystem & Responsiveness Tuning:
     - Configs:
       CONFIG_F2FS_FS_LZ4=y
       CONFIG_F2FS_FS_LZ4HC=y
       CONFIG_F2FS_FS_ZSTD=y
-    - Purpose: Full hardware compression support on user data partition.
+    - Kernel Optimizations:
+      - Uncongestion IO timeout reduced 20ms -> 6ms (eliminates UI micro-stutter)
+      - Enlarged DEF_MIN_FSYNC_BLOCKS 8 -> 20 (OPPO/Huawei production tuning)
+      - Urgent GC thread sleep reduced 500ms -> 50ms (matches Android vold IdleMaint)
+    - Purpose: Full hardware compression and low-latency I/O on user data partition.
 
 ================================================================================
 5. GAMING, EMULATION & CONTROLLERS

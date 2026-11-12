@@ -208,6 +208,13 @@ jobs:
           rm -f lib/lz4/lz4armv8/*.rej
           sed -i 's#include <linux/unaligned.h>#include <asm/unaligned.h>#' lib/zstd/common/mem.h
           grep -q "ZSTD_VERSION_RELEASE  7" include/linux/zstd_lib.h
+          echo "12. Applying KMI-safe ARM64 & F2FS/Scheduler Performance Backports (clear_page 16B align, DSU CACHE_HOT_BUDDY, idle CPU scan order, F2FS 6ms/fsync/GC)..."
+          patch -p1 < ../patches/clear_page_16bytes_align.patch
+          patch -p1 --fuzz=3 < ../wild_patches/common/disable_cache_hot_buddy.patch
+          patch -p1 --fuzz=3 < ../wild_patches/common/adjust_cpu_scan_order.patch
+          patch -p1 --fuzz=3 < ../wild_patches/common/f2fs_reduce_congestion.patch
+          patch -p1 --fuzz=3 < ../wild_patches/common/f2fs_enlarge_min_fsync_blocks.patch
+          patch -p1 --fuzz=3 < ../wild_patches/common/reduce_gc_thread_sleep_time.patch
       - name: "Integrate Root Variant (${{ matrix.variant }}) & SUSFS Patches"
         if: matrix.variant != 'vanilla'
         run: |
