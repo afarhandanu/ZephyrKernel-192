@@ -255,6 +255,8 @@ jobs:
             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
             KSU_DIR="KernelSU"
             python3 ../workbench/kernel/ksu/variants/sukisu/fallthrough_compat.py "${KSU_DIR}/kernel/policy/allowlist.c" || true
+            echo "Patching SukiSU upstream policydb->latest_granting typo in rules.c..."
+            sed -i 's/policydb->latest_granting/pol->latest_granting/g' "${KSU_DIR}/kernel/selinux/rules.c"
             ./scripts/config --file arch/arm64/configs/gki_defconfig -e KPM
           elif [ "$VARIANT" = "bakasu" ]; then
             curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -s main
@@ -462,7 +464,7 @@ jobs:
   release:
     name: Publish Unified GitHub Release
     needs: [setup-matrix, build]
-    if: ${{ !cancelled() && needs.build.result == 'success' && inputs.publish_release }}
+    if: ${{ !cancelled() && always() && (needs.build.result == 'success' || needs.build.result == 'failure') && inputs.publish_release }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout ZephyrKernel Repository
@@ -470,6 +472,7 @@ jobs:
 
       - name: Download All Built Variant ZIPs
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: release_assets
           merge-multiple: true
@@ -478,6 +481,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          mkdir -p release_assets
+          if [ -z "$(ls -A release_assets 2>/dev/null)" ]; then
+            echo "No release assets found to publish, skipping release creation."
+            exit 0
+          fi
           BUILD_DATE="${{ needs.setup-matrix.outputs.build_date }}"
           TAG="v6.1-${BUILD_DATE}-${{ inputs.root_variant }}-${{ inputs.lto_mode }}LTO"
           TITLE="⚡ ZephyrKernel GKI 6.1.190 (Variants: ${{ inputs.root_variant }} | LTO: ${{ inputs.lto_mode }} | ${BUILD_DATE})"
