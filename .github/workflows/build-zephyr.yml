@@ -247,7 +247,7 @@ jobs:
               }
               { print }
             ' FinaSU/kernel/Kbuild > FinaSU/kernel/Kbuild.new && mv FinaSU/kernel/Kbuild.new FinaSU/kernel/Kbuild
-            ./scripts/config --file arch/arm64/configs/gki_defconfig -e KSU_HOOK_TRACEPOINT -e KSU_DYNAMIC_MANAGER
+            ./scripts/config --file arch/arm64/configs/gki_defconfig -d KSU_HOOK_TRACEPOINT -e KSU_HOOK_SUSFS_INLINE -e KSU_DYNAMIC_MANAGER
           elif [ "$VARIANT" = "ksunext" ]; then
             curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh" | bash -s dev-susfs
             KSU_DIR="KernelSU-Next"
@@ -363,6 +363,19 @@ jobs:
           ./scripts/config --file arch/arm64/configs/gki_defconfig --set-val ANON_MIN_RATIO 5
           ./scripts/config --file arch/arm64/configs/gki_defconfig --set-val CLEAN_LOW_RATIO 0
           ./scripts/config --file arch/arm64/configs/gki_defconfig --set-val CLEAN_MIN_RATIO 5
+
+          # 5. CIFS / SMB3 Native Network Storage Driver & TCP Westwood+
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e DNS_RESOLVER
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_STATS2
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_ALLOW_INSECURE_LEGACY
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_UPCALL
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_XATTR
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_POSIX
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_DFS_UPCALL
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e CIFS_SWN_UPCALL
+          ./scripts/config --file arch/arm64/configs/gki_defconfig -e TCP_CONG_WESTWOOD
+
           # IMPORTANT: Keep SLUB_DEBUG=y and UBSAN disabled to preserve MediaTek KMI ABI!
           ./scripts/config --file arch/arm64/configs/gki_defconfig -e SLUB_DEBUG
           ./scripts/config --file arch/arm64/configs/gki_defconfig -d UBSAN

@@ -111,7 +111,12 @@ TABLE OF CONTENTS
       do not silently revert the congestion algorithm to legacy 'cubic'.
     - Verification:
       $ cat /proc/sys/net/ipv4/tcp_congestion_control -> Output: bbr3
-      $ cat /proc/sys/net/ipv4/tcp_available_congestion_control -> Output: reno cubic bbr bbr3
+      $ cat /proc/sys/net/ipv4/tcp_available_congestion_control -> Output: reno cubic bbr bbr3 westwood
+
+[*] TCP Westwood+ (Wireless & Cellular Packet Loss Resilience):
+    - Config: CONFIG_TCP_CONG_WESTWOOD=y
+    - Purpose: Bandwidth-estimation congestion control specifically optimized for
+      cellular data and wireless links with sporadic signal drops and packet loss.
 
 [*] Google Fair Queue (FQ) Pacing Default:
     - Configs:
@@ -165,6 +170,22 @@ TABLE OF CONTENTS
     - Verification:
       $ grep ntfs3 /proc/filesystems -> Output: nodev ntfs3
 
+[*] Native CIFS / SMB3 Network Filesystem (Windows Share & NAS):
+    - Configs:
+      CONFIG_CIFS=y
+      CONFIG_CIFS_STATS2=y
+      CONFIG_CIFS_ALLOW_INSECURE_LEGACY=y
+      CONFIG_CIFS_UPCALL=y
+      CONFIG_CIFS_XATTR=y
+      CONFIG_CIFS_POSIX=y
+      CONFIG_CIFS_DFS_UPCALL=y
+      CONFIG_CIFS_SWN_UPCALL=y
+      CONFIG_DNS_RESOLVER=y
+    - Purpose: Mount Windows Network Shares (SMB) and NAS folders directly to Android
+      storage (/sdcard/...) over local WiFi with wire-speed throughput without third-party apps.
+    - Verification:
+      $ grep cifs /proc/filesystems -> Output: nodev cifs
+
 [*] Advanced F2FS Filesystem Features:
     - Configs:
       CONFIG_F2FS_FS_LZ4=y
@@ -215,6 +236,12 @@ TABLE OF CONTENTS
 ================================================================================
 7. ROOT SOLUTIONS, SUSFS & SECURITY GUARD
 ================================================================================
+[*] SUSFS Inline Syscall Redirect (CONFIG_KSU_HOOK_SUSFS_INLINE=y):
+    - Replaces tracepoint hooks with direct inline syscall redirection at VFS level.
+    - Zero tracepoint / ftrace listener presence in kernel for 100% stealth against
+      advanced banking apps and anti-cheat scans.
+    - Manager displays: 'Hook type: SUSFS Inline Syscall Redirect'.
+
 [*] SuSFS (Kernel-level Root Hiding Engine v1.5.8):
     - Embedded natively into all root variants (FinASU, KSU, KSU-Next, KowSU, SukiSU, BakaSU).
     - Hides root mounts, ksu binaries, and injected mounts from banking apps,
