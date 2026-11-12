@@ -5,7 +5,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=ZephyrKernel (Universal Android 14 GKI 6.1)
+kernel.string=ZephyrKernel (Universal Android 14 GKI 6.1.190)
 do.devicecheck=0
 do.modules=0
 do.systemless=0
@@ -39,9 +39,19 @@ no_magisk_check=1
 # import functions/variables and setup patching
 . tools/ak3-core.sh
 
-# GKI check
-kernel_version=$(cat /proc/version | awk -F '-' '{print $1}' | awk '{print $3}')
-case $kernel_version in
+# Detect native kernel version directly from the new Image being flashed
+IMAGE_FILE="$home/Image"
+[ ! -f "$IMAGE_FILE" ] && IMAGE_FILE="Image"
+
+if [ -f "$IMAGE_FILE" ]; then
+    native_kver=$(strings "$IMAGE_FILE" 2>/dev/null | grep -m1 "Linux version " | awk '{print $3}')
+    [ -z "$native_kver" ] && native_kver=$(tools/busybox strings "$IMAGE_FILE" 2>/dev/null | grep -m1 "Linux version " | awk '{print $3}')
+fi
+[ -z "$native_kver" ] && native_kver="6.1.190-android14-11-Zephyr"
+
+# Device GKI check (read from running system)
+running_kver=$(cat /proc/version 2>/dev/null | awk -F '-' '{print $1}' | awk '{print $3}')
+case $running_kver in
     5.1*) gki_supported=true ;;
     6.1*) gki_supported=true ;;
     6.6*) gki_supported=true ;;
@@ -49,7 +59,8 @@ case $kernel_version in
 esac
 
 ui_print " "
-ui_print "  -> Flashing ZephyrKernel (GKI $kernel_version)..."
+ui_print "  -> Flashing ZephyrKernel : $native_kver"
+ui_print "  -> Current Device System : GKI $running_kver"
 $gki_supported || abort "  -> Non-GKI device, abort."
 ui_print "  • BORE v6.8.0-rc1 + Schedutil/Workqueue Catch-up"
 ui_print "  • TCP BBRv3 + FQ Pacing (No pfifo) + CAKE Qdisc"

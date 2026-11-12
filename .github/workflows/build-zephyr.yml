@@ -437,6 +437,9 @@ jobs:
           cp kernel/out/arch/arm64/boot/Image anykernel/Image
 
           SUSFS_VER=$(grep "#define SUSFS_VERSION" kernel/include/linux/susfs.h 2>/dev/null | head -1 | cut -d'"' -f2 || echo "v2.4.0")
+          KVER=$(make -s -C kernel kernelversion 2>/dev/null || echo "6.1.190")
+          sed -i "s/GKI 6.1.190/GKI ${KVER}/g" anykernel/banner
+          sed -i "s/GKI 6.1.190/GKI ${KVER}/g" anykernel/anykernel.sh
           if [ "${{ matrix.variant }}" = "vanilla" ]; then
             sed -i "s/FinaSU & SUSFS/Vanilla (Non-Root)/" anykernel/banner
           else
