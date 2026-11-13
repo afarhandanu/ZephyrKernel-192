@@ -918,3 +918,425 @@ diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
  	struct inquiry_data	data;
  };
  
+diff --git a/include/net/netns/mpls.h b/include/net/netns/mpls.h
+--- a/include/net/netns/mpls.h
++++ b/include/net/netns/mpls.h
+@@ -16,7 +16,9 @@
+ 	int default_ttl;
+ 	size_t platform_labels;
+ 	struct mpls_route __rcu * __rcu *platform_label;
++#ifndef __GENKSYMS__
+ 	seqcount_t platform_label_seq;
++#endif
+ 
+ 	struct ctl_table_header *ctl;
+ };
+diff --git a/include/net/netns/xfrm.h b/include/net/netns/xfrm.h
+--- a/include/net/netns/xfrm.h
++++ b/include/net/netns/xfrm.h
+@@ -24,7 +24,9 @@
+ struct xfrm_policy_hthresh {
+ 	struct work_struct	work;
+ 	seqlock_t		lock;
++#ifndef __GENKSYMS__
+ 	bool			work_disabled;
++#endif
+ 	u8			lbits4;
+ 	u8			rbits4;
+ 	u8			lbits6;
+diff --git a/include/linux/unicode.h b/include/linux/unicode.h
+--- a/include/linux/unicode.h
++++ b/include/linux/unicode.h
+@@ -51,7 +51,9 @@
+ 	unsigned int version;
+ 	const struct utf8data *ntab[UTF8_NMAX];
+ 	const struct utf8data_table *tables;
++#ifndef __GENKSYMS__
+ 	struct rcu_head rcu;
++#endif
+ };
+ 
+ int utf8_validate(const struct unicode_map *um, const struct qstr *str);
+diff --git a/include/net/dropreason.h b/include/net/dropreason.h
+--- a/include/net/dropreason.h
++++ b/include/net/dropreason.h
+@@ -299,8 +299,10 @@
+ 	 * MTU)
+ 	 */
+ 	SKB_DROP_REASON_PKT_TOO_BIG,
++#ifndef __GENKSYMS__
+ 	/** @SKB_DROP_REASON_TC_CHAIN_NOTFOUND: tc chain lookup failed. */
+ 	SKB_DROP_REASON_TC_CHAIN_NOTFOUND,
++#endif
+ 	/**
+ 	 * @SKB_DROP_REASON_MAX: the maximum of drop reason, which shouldn't be
+ 	 * used as a real 'reason'
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -565,7 +565,7 @@
+ #else
+ struct mm_struct_abi_extend {
+ 	struct task_dma_buf_info *dmabuf_info;
+-#ifdef CONFIG_FUTEX
++#if defined(CONFIG_FUTEX) && !defined(__GENKSYMS__)
+ 	atomic64_t futex_unique_id;
+ #endif
+ };
+diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
+--- a/include/linux/sched/task.h
++++ b/include/linux/sched/task.h
+@@ -38,7 +38,9 @@
+ 	void *fn_arg;
+ 	struct cgroup *cgrp;
+ 	struct css_set *cset;
++#ifndef __GENKSYMS__
+ 	unsigned int kill_seq;
++#endif
+ };
+ 
+ /*
+diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -1177,7 +1177,9 @@
+ 	unsigned int		core_forceidle_seq;
+ 	unsigned int		core_forceidle_occupation;
+ 	u64			core_forceidle_start;
++#ifndef __GENKSYMS__
+ 	unsigned int		core_pick_in_flight;
++#endif
+ #endif
+ 
+ 	ANDROID_VENDOR_DATA_ARRAY(1, 1);
+diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
+--- a/include/net/sch_generic.h
++++ b/include/net/sch_generic.h
+@@ -118,7 +118,9 @@
+ 	struct qdisc_skb_head	q;
+ 	struct gnet_stats_basic_sync bstats;
+ 	struct gnet_stats_queue	qstats;
++#ifndef __GENKSYMS__
+ 	int                     owner;
++#endif
+ 	unsigned long		state;
+ 	unsigned long		state2; /* must be written under qdisc spinlock */
+ 	struct Qdisc            *next_sched;
+@@ -383,10 +385,12 @@
+ 						struct nlattr **tca,
+ 						struct netlink_ext_ack *extack);
+ 	void			(*tmplt_destroy)(void *tmplt_priv);
++#ifndef __GENKSYMS__
+ 	void			(*tmplt_reoffload)(struct tcf_chain *chain,
+ 						   bool add,
+ 						   flow_setup_cb_t *cb,
+ 						   void *cb_priv);
++#endif
+ 
+ 	/* rtnetlink specific */
+ 	int			(*dump)(struct net*, struct tcf_proto*, void *,
+@@ -433,8 +437,10 @@
+ 	 */
+ 	spinlock_t		lock;
+ 	bool			deleting;
++#ifndef __GENKSYMS__
+ 	bool			counted;
+ 	bool			usesw;
++#endif
+ 	refcount_t		refcnt;
+ 	struct rcu_head		rcu;
+ 	struct hlist_node	destroy_ht_node;
+@@ -483,7 +489,9 @@
+ 	struct flow_block flow_block;
+ 	struct list_head owner_list;
+ 	bool keep_dst;
++#ifndef __GENKSYMS__
+ 	atomic_t useswcnt;
++#endif
+ 	atomic_t offloadcnt; /* Number of oddloaded filters */
+ 	unsigned int nooffloaddevcnt; /* Number of devs unable to do offload */
+ 	unsigned int lockeddevcnt; /* Number of devs that require rtnl lock. */
+diff --git a/include/net/sock.h b/include/net/sock.h
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -465,10 +465,14 @@
+ 	__u32			sk_dst_pending_confirm;
+ 	u32			sk_pacing_status; /* see enum sk_pacing */
+ 	long			sk_sndtimeo;
++#ifdef __GENKSYMS__
++	struct timer_list	sk_timer;
++#else
+ 	union {
+ 		struct timer_list sk_timer;
+ 		struct timer_list mptcp_retransmit_timer;
+ 	};
++#endif
+ 	__u32			sk_priority;
+ 	__u32			sk_mark;
+ 	unsigned long		sk_pacing_rate; /* bytes per second */
+diff --git a/include/net/inet_connection_sock.h b/include/net/inet_connection_sock.h
+--- a/include/net/inet_connection_sock.h
++++ b/include/net/inet_connection_sock.h
+@@ -97,10 +97,12 @@
+ 	unsigned long		  icsk_timeout;
+ 	struct timer_list	  icsk_retransmit_timer;
+ 	struct timer_list	  icsk_delack_timer;
++#ifndef __GENKSYMS__
+ 	union {
+ 		struct timer_list icsk_keepalive_timer;
+ 		struct timer_list mptcp_tout_timer;
+ 	};
++#endif
+ 	__u32			  icsk_rto;
+ 	__u32                     icsk_rto_min;
+ 	__u32                     icsk_delack_max;
+diff --git a/block/blk-cgroup.h b/block/blk-cgroup.h
+--- a/block/blk-cgroup.h
++++ b/block/blk-cgroup.h
+@@ -125,9 +125,11 @@
+ 	/* the blkg and policy id this per-policy data belongs to */
+ 	struct blkcg_gq			*blkg;
+ 	int				plid;
++#ifndef __GENKSYMS__
+ 	bool				online;
+ 
+ 	struct rcu_head			rcu_head;
++#endif
+ };
+ 
+ /*
+diff --git a/block/bfq-iosched.h b/block/bfq-iosched.h
+--- a/block/bfq-iosched.h
++++ b/block/bfq-iosched.h
+@@ -953,7 +953,11 @@
+ 	char blkg_path[128];
+ 
+ 	/* reference counter (see comments in bfq_bic_update_cgroup) */
++#ifdef __GENKSYMS__
++	int ref;
++#else
+ 	atomic_t ref;
++#endif
+ 	/* Is bfq_group still online? */
+ 	bool online;
+ 
+diff --git a/include/linux/bpf.h b/include/linux/bpf.h
+--- a/include/linux/bpf.h
++++ b/include/linux/bpf.h
+@@ -1185,9 +1185,11 @@
+ 	bool sleepable;
+ 	bool tail_call_reachable;
+ 	bool xdp_has_frags;
++#ifndef __GENKSYMS__
+ 	bool is_extended; /* true if extended by freplace program */
+ 	u64 prog_array_member_cnt; /* counts how many times as member of prog_array */
+ 	struct mutex ext_mutex; /* mutex for is_extended and prog_array_member_cnt */
++#endif
+ 	/* BTF_KIND_FUNC_PROTO for valid attach_btf_id */
+ 	const struct btf_type *attach_func_proto;
+ 	/* function name for valid attach_btf_id */
+@@ -1297,6 +1299,9 @@
+ 	enum bpf_link_type type;
+ 	const struct bpf_link_ops *ops;
+ 	struct bpf_prog *prog;
++#ifdef __GENKSYMS__
++	struct work_struct work;
++#else
+ 	/* rcu is used before freeing, work can be used to schedule that
+ 	 * RCU-based freeing before that, so they never overlap
+ 	 */
+@@ -1304,6 +1309,7 @@
+ 		struct rcu_head rcu;
+ 		struct work_struct work;
+ 	};
++#endif
+ };
+ 
+ struct bpf_link_ops {
+@@ -1312,11 +1318,13 @@
+ 	 * waiting
+ 	 */
+ 	void (*dealloc)(struct bpf_link *link);
++#ifndef __GENKSYMS__
+ 	/* deallocate link resources callback, called after RCU grace period;
+ 	 * if underlying BPF program is sleepable we go through tasks trace
+ 	 * RCU GP and then "classic" RCU GP
+ 	 */
+ 	void (*dealloc_deferred)(struct bpf_link *link);
++#endif
+ 	int (*detach)(struct bpf_link *link);
+ 	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
+ 			   struct bpf_prog *old_prog);
+diff --git a/include/linux/device-mapper.h b/include/linux/device-mapper.h
+--- a/include/linux/device-mapper.h
++++ b/include/linux/device-mapper.h
+@@ -361,10 +361,12 @@
+ 	 */
+ 	bool discards_supported:1;
+ 
++#ifndef __GENKSYMS__
+ 	/*
+ 	 * Set if this target requires stable data during writeback.
+ 	 */
+ 	bool needs_stable_writes:1;
++#endif
+ 
+ 	/*
+ 	 * Set if we need to limit the number of in-flight bios when swapping.
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -80,8 +80,12 @@
+ 	struct pci_bus		*bus;		/* Bus this slot is on */
+ 	struct list_head	list;		/* Node in list of slots */
+ 	struct hotplug_slot	*hotplug;	/* Hotplug info (move here) */
++#ifdef __GENKSYMS__
++	unsigned char		number;		/* PCI_SLOT(pci_dev->devfn) */
++#else
+ 	u16			number;		/* PCI_SLOT(pci_dev->devfn) or PCI_SLOT_PLACEHOLDER */
+ 	unsigned int		per_func_slot:1; /* Allow per function slot */
++#endif
+ 	struct kobject		kobj;
+ };
+ 
+diff --git a/include/linux/i3c/master.h b/include/linux/i3c/master.h
+--- a/include/linux/i3c/master.h
++++ b/include/linux/i3c/master.h
+@@ -231,7 +231,9 @@
+ 	struct device dev;
+ 	struct i3c_dev_desc *desc;
+ 	struct i3c_bus *bus;
++#ifndef __GENKSYMS__
+ 	struct list_head node;
++#endif
+ };
+ 
+ /*
+diff --git a/include/linux/mtd/mtd.h b/include/linux/mtd/mtd.h
+--- a/include/linux/mtd/mtd.h
++++ b/include/linux/mtd/mtd.h
+@@ -379,7 +379,11 @@
+ 
+ 	struct module *owner;
+ 	struct device dev;
++#ifdef __GENKSYMS__
++	int usecount;
++#else
+ 	struct kref refcnt;
++#endif
+ 	struct mtd_debug_info dbg;
+ 	struct nvmem_device *nvmem;
+ 	struct nvmem_device *otp_user_nvmem;
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -1165,7 +1165,9 @@
+  */
+ struct dwc3 {
+ 	struct work_struct	drd_work;
++#ifndef __GENKSYMS__
+ 	struct work_struct	err_recovery_work;
++#endif
+ 	struct dwc3_trb		*ep0_trb;
+ 	void			*bounce;
+ 	void			*scratchbuf;
+@@ -1182,8 +1184,10 @@
+ 	/* mode switching lock */
+ 	struct mutex		mutex;
+ 
++#ifndef __GENKSYMS__
+ 	/* serializes pull-up run/stop vs error recovery */
+ 	struct mutex		connect_mutex;
++#endif
+ 
+ 	struct device		*dev;
+ 	struct device		*sysdev;
+@@ -1227,8 +1231,10 @@
+ 	enum usb_dr_mode	role_switch_default_mode;
+ 
+ 	struct power_supply	*usb_psy;
++#ifndef __GENKSYMS__
+ 	struct work_struct	vbus_draw_work;
+ 	unsigned int		current_limit;
++#endif
+ 
+ 	u32			fladj;
+ 	u32			ref_clk_per;
+@@ -1303,9 +1309,11 @@
+ 	enum dwc3_ep0_next	ep0_next_event;
+ 	enum dwc3_ep0_state	ep0state;
+ 	enum dwc3_link_state	link_state;
++#ifndef __GENKSYMS__
+ 	enum dwc3_err_state	err_state;
+ 
+ 	u32			err_recovery_count;
++#endif
+ 
+ 	u16			u2sel;
+ 	u16			u2pel;
+diff --git a/drivers/firmware/arm_scmi/driver.c b/drivers/firmware/arm_scmi/driver.c
+--- a/drivers/firmware/arm_scmi/driver.c
++++ b/drivers/firmware/arm_scmi/driver.c
+@@ -187,7 +187,7 @@
+ 		module_put(proto->owner);
+ }
+ 
+-int scmi_protocol_register(const struct scmi_protocol *proto)
++int __scmi_protocol_register(const struct scmi_protocol *proto)
+ {
+ 	int ret;
+ 
+@@ -215,9 +215,8 @@
+ 
+ 	return 0;
+ }
+-EXPORT_SYMBOL_GPL(scmi_protocol_register);
+-
+-void scmi_protocol_unregister(const struct scmi_protocol *proto)
++
++void __scmi_protocol_unregister(const struct scmi_protocol *proto)
+ {
+ 	spin_lock(&protocol_lock);
+ 	idr_remove(&scmi_protocols, proto->id);
+@@ -225,7 +224,6 @@
+ 
+ 	pr_debug("Unregistered SCMI Protocol 0x%x\n", proto->id);
+ }
+-EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
+ 
+ /**
+  * scmi_create_protocol_devices  - Create devices for all pending requests for
+diff --git a/drivers/firmware/arm_scmi/common.h b/drivers/firmware/arm_scmi/common.h
+--- a/drivers/firmware/arm_scmi/common.h
++++ b/drivers/firmware/arm_scmi/common.h
+@@ -136,6 +136,8 @@
+ 
+ struct scmi_revision_info *
+ scmi_revision_area_get(const struct scmi_protocol_handle *ph);
++int __scmi_protocol_register(const struct scmi_protocol *proto);
++void __scmi_protocol_unregister(const struct scmi_protocol *proto);
+ void scmi_setup_protocol_implemented(const struct scmi_protocol_handle *ph,
+ 				     u8 *prot_imp);
+ 
+diff --git a/drivers/firmware/arm_scmi/bus.c b/drivers/firmware/arm_scmi/bus.c
+--- a/drivers/firmware/arm_scmi/bus.c
++++ b/drivers/firmware/arm_scmi/bus.c
+@@ -503,6 +503,18 @@
+ }
+ EXPORT_SYMBOL_GPL(scmi_device_destroy);
+ 
++int scmi_protocol_register(const struct scmi_protocol *proto)
++{
++	return __scmi_protocol_register(proto);
++}
++EXPORT_SYMBOL_GPL(scmi_protocol_register);
++
++void scmi_protocol_unregister(const struct scmi_protocol *proto)
++{
++	__scmi_protocol_unregister(proto);
++}
++EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
++
+ static int __scmi_devices_unregister(struct device *dev, void *data)
+ {
+ 	struct scmi_device *scmi_dev = to_scmi_dev(dev);
