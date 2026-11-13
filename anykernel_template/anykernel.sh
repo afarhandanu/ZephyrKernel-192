@@ -38,6 +38,7 @@ no_magisk_check=1
 
 # import functions/variables and setup patching
 . tools/ak3-core.sh
+magisk_patched=0
 
 # Detect native kernel version directly from the new Image being flashed
 IMAGE_FILE="$home/Image"

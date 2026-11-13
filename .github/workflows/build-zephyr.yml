@@ -452,6 +452,7 @@ jobs:
       - name: Package AnyKernel3 Flashable ZIP
         run: |
           git clone https://github.com/chainonyourdoor/AnyKernel3-Luminaire.git --depth=1 anykernel
+          sed -i 's/\[ "\$magisk_patched" -eq 1 \]/[ "\$magisk_patched" = "1" ]/g' anykernel/tools/ak3-core.sh
           
           cp anykernel_template/banner anykernel/banner
           cp anykernel_template/anykernel.sh anykernel/anykernel.sh
