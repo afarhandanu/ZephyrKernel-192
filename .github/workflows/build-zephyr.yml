@@ -92,7 +92,7 @@ jobs:
           sudo chmod 600 /mnt/swapfile
           sudo mkswap /mnt/swapfile
           sudo swapon /mnt/swapfile
-          sudo sysctl -w vm.swappiness=80
+          sudo sysctl -w vm.swappiness=10
           echo "=== Memory & Swap Configuration ==="
           free -h
       - name: Restore Compiler Cache (ccache)
@@ -431,16 +431,14 @@ jobs:
             EXTRA_MAKE_ARGS="LD=${PWD}/ld-wrapper HOSTLD=${PWD}/ld-wrapper"
             echo "ThinLTO ld-wrapper enabled (jobs/threads: ${LD_JOBS})"
           elif [ "${{ matrix.lto }}" = "full" ]; then
-            LD_JOBS=$(( $(nproc --all) / 2 ))
-            [ "$LD_JOBS" -ge 1 ] || LD_JOBS=1
             cat > "${PWD}/ld-wrapper" <<EOF
           #!/usr/bin/env bash
-          exec ld.lld "\$@" --lto-O2 --threads=${LD_JOBS}
+          exec ld.lld "\$@" --lto-O2 --threads=1
           EOF
             sed -i 's/^[[:space:]]*//' "${PWD}/ld-wrapper"
             chmod +x "${PWD}/ld-wrapper"
             EXTRA_MAKE_ARGS="LD=${PWD}/ld-wrapper HOSTLD=${PWD}/ld-wrapper"
-            echo "FullLTO ld-wrapper enabled (threads: ${LD_JOBS})"
+            echo "FullLTO ld-wrapper enabled (threads: 1)"
           fi
           echo "Generating gki_defconfig..."
           make -j$(nproc --all) O=out ARCH=arm64 CC="ccache clang" LLVM=1 LLVM_IAS=1 $EXTRA_MAKE_ARGS KBUILD_BUILD_USER="kucingbalap1644" KBUILD_BUILD_HOST="ZephyrCI" gki_defconfig
