@@ -315,21 +315,6 @@ diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
  
  	u16			u2sel;
  	u16			u2pel;
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -560,7 +560,11 @@
- 	bool			mq_sysfs_init_done;
- 	ANDROID_OEM_DATA(1);
- 
-+#ifdef __GENKSYMS__
-+	ANDROID_KABI_RESERVE(1);
-+#else
- 	ANDROID_KABI_USE(1, struct mutex *rq_qos_mutex);
-+#endif
- 	ANDROID_KABI_RESERVE(2);
- 	ANDROID_KABI_RESERVE(3);
- 	ANDROID_KABI_RESERVE(4);
 diff --git a/include/linux/bpf.h b/include/linux/bpf.h
 --- a/include/linux/bpf.h
 +++ b/include/linux/bpf.h
@@ -377,19 +362,6 @@ diff --git a/include/linux/bpf.h b/include/linux/bpf.h
  	int (*detach)(struct bpf_link *link);
  	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
  			   struct bpf_prog *old_prog);
-diff --git a/include/linux/can/skb.h b/include/linux/can/skb.h
---- a/include/linux/can/skb.h
-+++ b/include/linux/can/skb.h
-@@ -55,7 +55,9 @@
-  */
- struct can_skb_priv {
- 	int ifindex;
-+#ifndef __GENKSYMS__
- 	u32 skbcnt;
-+#endif
- 	unsigned int frame_len;
- 	struct can_frame cf[];
- };
 diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h
 --- a/include/linux/cgroup-defs.h
 +++ b/include/linux/cgroup-defs.h
@@ -579,24 +551,6 @@ diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
  };
  
  /*
-diff --git a/include/linux/sched/user.h b/include/linux/sched/user.h
---- a/include/linux/sched/user.h
-+++ b/include/linux/sched/user.h
-@@ -37,10 +37,14 @@
- 	struct ratelimit_state ratelimit;
- 	ANDROID_OEM_DATA_ARRAY(1, 2);
- 
-+#ifdef __GENKSYMS__
-+	atomic_long_t locked_vm;
-+#else
- #ifdef CONFIG_PERF_EVENTS
- 	ANDROID_KABI_USE(1, atomic_long_t perf_mlock);
- #else
- 	ANDROID_KABI_RESERVE(1);
-+#endif
- #endif
- 	ANDROID_KABI_RESERVE(2);
- };
 diff --git a/include/linux/scmi_protocol.h b/include/linux/scmi_protocol.h
 --- a/include/linux/scmi_protocol.h
 +++ b/include/linux/scmi_protocol.h
@@ -667,21 +621,6 @@ diff --git a/include/linux/trace_seq.h b/include/linux/trace_seq.h
  }
  
  /**
-diff --git a/include/linux/tty.h b/include/linux/tty.h
---- a/include/linux/tty.h
-+++ b/include/linux/tty.h
-@@ -251,7 +251,11 @@
- 	struct work_struct SAK_work;
- 	struct tty_port *port;
- 
-+#ifdef __GENKSYMS__
-+	ANDROID_KABI_RESERVE(1);
-+#else
- 	ANDROID_KABI_USE(1, wait_queue_head_t *break_wait);
-+#endif
- 	ANDROID_KABI_RESERVE(2);
- } __randomize_layout;
- 
 diff --git a/include/linux/unicode.h b/include/linux/unicode.h
 --- a/include/linux/unicode.h
 +++ b/include/linux/unicode.h
@@ -784,73 +723,6 @@ diff --git a/include/net/inet_connection_sock.h b/include/net/inet_connection_so
  	__u32			  icsk_rto;
  	__u32                     icsk_rto_min;
  	__u32                     icsk_delack_max;
-diff --git a/include/net/netfilter/nf_conntrack_expect.h b/include/net/netfilter/nf_conntrack_expect.h
---- a/include/net/netfilter/nf_conntrack_expect.h
-+++ b/include/net/netfilter/nf_conntrack_expect.h
-@@ -32,6 +32,29 @@
- 	/* Flags */
- 	unsigned int flags;
- 
-+#ifdef __GENKSYMS__
-+	/* Function to call after setup and insertion */
-+	void (*expectfn)(struct nf_conn *new,
-+			 struct nf_conntrack_expect *this);
-+
-+	/* Helper to assign to new connection */
-+	struct nf_conntrack_helper *helper;
-+
-+	/* The conntrack of the master connection */
-+	struct nf_conn *master;
-+
-+	/* Timer function; deletes the expectation. */
-+	struct timer_list timeout;
-+
-+	/* Usage count. */
-+	refcount_t use;
-+
-+	/* Flags */
-+	unsigned int flags;
-+
-+	/* Expectation class */
-+	unsigned int class;
-+#else
- 	/* Expectation class */
- 	unsigned int class;
- 
-@@ -50,6 +73,7 @@
- 
- 	/* jiffies32 when this expectation expires */
- 	u32 timeout;
-+#endif
- #if IS_ENABLED(CONFIG_NF_NAT)
- 	union nf_inet_addr saved_addr;
- 	/* This is the original per-proto part, used to map the
-diff --git a/include/net/netfilter/nf_conntrack_timeout.h b/include/net/netfilter/nf_conntrack_timeout.h
---- a/include/net/netfilter/nf_conntrack_timeout.h
-+++ b/include/net/netfilter/nf_conntrack_timeout.h
-@@ -12,7 +12,9 @@
- #define CTNL_TIMEOUT_NAME_MAX	32
- 
- struct nf_ct_timeout {
-+#ifndef __GENKSYMS__
- 	refcount_t		refcnt;
-+#endif
- 	__u16			l3num;
- 	const struct nf_conntrack_l4proto *l4proto;
- 	struct rcu_head		rcu;
-diff --git a/include/net/netfilter/nf_queue.h b/include/net/netfilter/nf_queue.h
---- a/include/net/netfilter/nf_queue.h
-+++ b/include/net/netfilter/nf_queue.h
-@@ -21,7 +21,9 @@
- 	struct net_device	*physout;
- #endif
- 	struct nf_hook_state	state;
-+#ifndef __GENKSYMS__
- 	bool			nf_ct_is_unconfirmed;
-+#endif
- 	u16			size; /* sizeof(entry) + saved route keys */
- 
- 	/* extra space to store route keys */
 diff --git a/include/net/netns/mpls.h b/include/net/netns/mpls.h
 --- a/include/net/netns/mpls.h
 +++ b/include/net/netns/mpls.h
@@ -1023,21 +895,6 @@ diff --git a/include/net/tcp.h b/include/net/tcp.h
  	int (*send_synack)(const struct sock *sk, struct dst_entry *dst,
  			   struct flowi *fl, struct request_sock *req,
  			   struct tcp_fastopen_cookie *foc,
-diff --git a/include/scsi/scsi_host.h b/include/scsi/scsi_host.h
---- a/include/scsi/scsi_host.h
-+++ b/include/scsi/scsi_host.h
-@@ -727,7 +727,11 @@
- 	 */
- 	struct device *dma_dev;
- 
-+#ifdef __GENKSYMS__
-+	ANDROID_KABI_RESERVE(1);
-+#else
- 	ANDROID_KABI_USE(1, struct scsi_eh_work *eh_work);
-+#endif
- 
- 	/*
- 	 * We should ensure that this is aligned, both for better performance
 diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
