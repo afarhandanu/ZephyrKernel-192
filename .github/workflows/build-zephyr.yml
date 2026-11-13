@@ -153,6 +153,8 @@ jobs:
           grep -q "if (0 && !mod->sig_ok && gki_is_module_protected_export(" kernel/module/main.c
           echo "2c. Applying MPTCP KMI struct preservation patch (prevents struct netns_mib & struct proto shift)..."
           patch -p1 < ../patches/fix_mptcp_kabi.patch
+          echo "2d. Applying 6.1.192 KMI/ABI preservation patch (cpucaps, trace_seq/seq_buf, keys, hwrng, nf_hook_ops, cfg80211, hci, cgroup, usb)..."
+          patch -p1 < ../patches/fix_192_kmi.patch
           echo "3. Applying ZRAM LZ4K/LZ4KD & built-in module blacklist (lzo, lzo_rle, zram, zsmalloc)..."
           cp -r ../sukisu_patch/other/zram/lz4k/include/linux/* include/linux/
           cp -r ../sukisu_patch/other/zram/lz4k/lib/* lib/
