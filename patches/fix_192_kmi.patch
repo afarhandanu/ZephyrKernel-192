@@ -74,6 +74,52 @@ diff --git a/net/netfilter/nf_nat_core.c b/net/netfilter/nf_nat_core.c
  	}
  unlock:
  	mutex_unlock(&nf_nat_proto_mutex);
+diff --git a/net/ipv4/netfilter/iptable_nat.c b/net/ipv4/netfilter/iptable_nat.c
+--- a/net/ipv4/netfilter/iptable_nat.c
++++ b/net/ipv4/netfilter/iptable_nat.c
+@@ -79,7 +79,8 @@
+ 			while (i)
+ 				nf_nat_ipv4_unregister_fn(net, &ops[--i]);
+ 
+-			kfree_rcu(ops, rcu);
++			synchronize_rcu();
++			kfree(ops);
+ 			return ret;
+ 		}
+ 	}
+@@ -100,7 +101,8 @@
+ 	for (i = 0; i < ARRAY_SIZE(nf_nat_ipv4_ops); i++)
+ 		nf_nat_ipv4_unregister_fn(net, &ops[i]);
+ 
+-	kfree_rcu(ops, rcu);
++	synchronize_rcu();
++	kfree(ops);
+ }
+ 
+ static int iptable_nat_table_init(struct net *net)
+diff --git a/net/ipv6/netfilter/ip6table_nat.c b/net/ipv6/netfilter/ip6table_nat.c
+--- a/net/ipv6/netfilter/ip6table_nat.c
++++ b/net/ipv6/netfilter/ip6table_nat.c
+@@ -81,7 +81,8 @@
+ 			while (i)
+ 				nf_nat_ipv6_unregister_fn(net, &ops[--i]);
+ 
+-			kfree_rcu(ops, rcu);
++			synchronize_rcu();
++			kfree(ops);
+ 			return ret;
+ 		}
+ 	}
+@@ -102,7 +103,8 @@
+ 	for (i = 0; i < ARRAY_SIZE(nf_nat_ipv6_ops); i++)
+ 		nf_nat_ipv6_unregister_fn(net, &ops[i]);
+ 
+-	kfree_rcu(ops, rcu);
++	synchronize_rcu();
++	kfree(ops);
+ }
+ 
+ static int ip6table_nat_table_init(struct net *net)
 diff --git a/include/linux/hw_random.h b/include/linux/hw_random.h
 --- a/include/linux/hw_random.h
 +++ b/include/linux/hw_random.h
