@@ -9,136 +9,36 @@ diff --git a/arch/arm64/tools/cpucaps b/arch/arm64/tools/cpucaps
  WORKAROUND_2658417
  WORKAROUND_TRBE_OVERWRITE_FILL_MODE
  WORKAROUND_TSB_FLUSH_FAILURE
-diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h
---- a/include/linux/cgroup-defs.h
-+++ b/include/linux/cgroup-defs.h
-@@ -424,11 +424,13 @@
+diff --git a/block/bfq-iosched.h b/block/bfq-iosched.h
+--- a/block/bfq-iosched.h
++++ b/block/bfq-iosched.h
+@@ -953,7 +953,11 @@
+ 	char blkg_path[128];
  
- 	int nr_threaded_children;	/* # of live threaded child cgroups */
- 
-+#ifndef __GENKSYMS__
- 	/*
- 	 * Sequence number for cgroup.kill. Incremented with both cgroup_mutex
- 	 * and css_set_lock held. Readers hold either one.
- 	 */
- 	unsigned int kill_seq;
+ 	/* reference counter (see comments in bfq_bic_update_cgroup) */
++#ifdef __GENKSYMS__
++	int ref;
++#else
+ 	atomic_t ref;
 +#endif
- 	struct kernfs_node *kn;		/* cgroup kernfs entry */
- 	struct cgroup_file procs_file;	/* handle for "cgroup.procs" */
- 	struct cgroup_file events_file;	/* handle for "cgroup.events" */
-diff --git a/include/linux/usb/gadget.h b/include/linux/usb/gadget.h
---- a/include/linux/usb/gadget.h
-+++ b/include/linux/usb/gadget.h
-@@ -113,7 +113,9 @@
- 	unsigned		zero:1;
- 	unsigned		short_not_ok:1;
- 	unsigned		dma_mapped:1;
-+#ifndef __GENKSYMS__
- 	unsigned		sg_was_mapped:1;
-+#endif
+ 	/* Is bfq_group still online? */
+ 	bool online;
  
- 	void			(*complete)(struct usb_ep *ep,
- 					struct usb_request *req);
-diff --git a/include/linux/netfilter.h b/include/linux/netfilter.h
---- a/include/linux/netfilter.h
-+++ b/include/linux/netfilter.h
-@@ -94,8 +94,6 @@
+diff --git a/block/blk-cgroup.h b/block/blk-cgroup.h
+--- a/block/blk-cgroup.h
++++ b/block/blk-cgroup.h
+@@ -125,9 +125,11 @@
+ 	/* the blkg and policy id this per-policy data belongs to */
+ 	struct blkcg_gq			*blkg;
+ 	int				plid;
++#ifndef __GENKSYMS__
+ 	bool				online;
+ 
+ 	struct rcu_head			rcu_head;
++#endif
  };
  
- struct nf_hook_ops {
--	struct rcu_head		rcu;
--
- 	/* User fills in from here down. */
- 	nf_hookfn		*hook;
- 	struct net_device	*dev;
-diff --git a/net/netfilter/nf_nat_core.c b/net/netfilter/nf_nat_core.c
---- a/net/netfilter/nf_nat_core.c
-+++ b/net/netfilter/nf_nat_core.c
-@@ -1054,7 +1054,8 @@
- 				priv = nat_ops[i].priv;
- 				kfree_rcu(priv, rcu_head);
- 			}
--			kfree_rcu(nat_ops, rcu);
-+			synchronize_rcu();
-+			kfree(nat_ops);
- 			return ret;
- 		}
- 
-@@ -1118,7 +1119,8 @@
- 		}
- 
- 		nat_proto_net->nat_hook_ops = NULL;
--		kfree_rcu(nat_ops, rcu);
-+		synchronize_rcu();
-+		kfree(nat_ops);
- 	}
- unlock:
- 	mutex_unlock(&nf_nat_proto_mutex);
-diff --git a/net/ipv4/netfilter/iptable_nat.c b/net/ipv4/netfilter/iptable_nat.c
---- a/net/ipv4/netfilter/iptable_nat.c
-+++ b/net/ipv4/netfilter/iptable_nat.c
-@@ -79,7 +79,8 @@
- 			while (i)
- 				nf_nat_ipv4_unregister_fn(net, &ops[--i]);
- 
--			kfree_rcu(ops, rcu);
-+			synchronize_rcu();
-+			kfree(ops);
- 			return ret;
- 		}
- 	}
-@@ -100,7 +101,8 @@
- 	for (i = 0; i < ARRAY_SIZE(nf_nat_ipv4_ops); i++)
- 		nf_nat_ipv4_unregister_fn(net, &ops[i]);
- 
--	kfree_rcu(ops, rcu);
-+	synchronize_rcu();
-+	kfree(ops);
- }
- 
- static int iptable_nat_table_init(struct net *net)
-diff --git a/net/ipv6/netfilter/ip6table_nat.c b/net/ipv6/netfilter/ip6table_nat.c
---- a/net/ipv6/netfilter/ip6table_nat.c
-+++ b/net/ipv6/netfilter/ip6table_nat.c
-@@ -81,7 +81,8 @@
- 			while (i)
- 				nf_nat_ipv6_unregister_fn(net, &ops[--i]);
- 
--			kfree_rcu(ops, rcu);
-+			synchronize_rcu();
-+			kfree(ops);
- 			return ret;
- 		}
- 	}
-@@ -102,7 +103,8 @@
- 	for (i = 0; i < ARRAY_SIZE(nf_nat_ipv6_ops); i++)
- 		nf_nat_ipv6_unregister_fn(net, &ops[i]);
- 
--	kfree_rcu(ops, rcu);
-+	synchronize_rcu();
-+	kfree(ops);
- }
- 
- static int ip6table_nat_table_init(struct net *net)
-diff --git a/include/linux/hw_random.h b/include/linux/hw_random.h
---- a/include/linux/hw_random.h
-+++ b/include/linux/hw_random.h
-@@ -16,7 +16,6 @@
- #include <linux/types.h>
- #include <linux/list.h>
- #include <linux/kref.h>
--#include <linux/workqueue.h>
- 
- /**
-  * struct hwrng - Hardware Random Number Generator driver
-@@ -50,7 +49,6 @@
- 	/* internal. */
- 	struct list_head list;
- 	struct kref ref;
--	struct work_struct cleanup_work;
- 	struct completion cleanup_done;
- 	struct completion dying;
- };
+ /*
 diff --git a/drivers/char/hw_random/core.c b/drivers/char/hw_random/core.c
 --- a/drivers/char/hw_random/core.c
 +++ b/drivers/char/hw_random/core.c
@@ -280,6 +180,293 @@ diff --git a/drivers/char/hw_random/core.c b/drivers/char/hw_random/core.c
  }
  EXPORT_SYMBOL_GPL(hwrng_unregister);
  
+diff --git a/drivers/firmware/arm_scmi/bus.c b/drivers/firmware/arm_scmi/bus.c
+--- a/drivers/firmware/arm_scmi/bus.c
++++ b/drivers/firmware/arm_scmi/bus.c
+@@ -503,6 +503,18 @@
+ }
+ EXPORT_SYMBOL_GPL(scmi_device_destroy);
+ 
++int scmi_protocol_register(const struct scmi_protocol *proto)
++{
++	return __scmi_protocol_register(proto);
++}
++EXPORT_SYMBOL_GPL(scmi_protocol_register);
++
++void scmi_protocol_unregister(const struct scmi_protocol *proto)
++{
++	__scmi_protocol_unregister(proto);
++}
++EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
++
+ static int __scmi_devices_unregister(struct device *dev, void *data)
+ {
+ 	struct scmi_device *scmi_dev = to_scmi_dev(dev);
+diff --git a/drivers/firmware/arm_scmi/common.h b/drivers/firmware/arm_scmi/common.h
+--- a/drivers/firmware/arm_scmi/common.h
++++ b/drivers/firmware/arm_scmi/common.h
+@@ -136,6 +136,8 @@
+ 
+ struct scmi_revision_info *
+ scmi_revision_area_get(const struct scmi_protocol_handle *ph);
++int __scmi_protocol_register(const struct scmi_protocol *proto);
++void __scmi_protocol_unregister(const struct scmi_protocol *proto);
+ void scmi_setup_protocol_implemented(const struct scmi_protocol_handle *ph,
+ 				     u8 *prot_imp);
+ 
+@@ -172,7 +174,9 @@
+  * @transport_info: Transport layer related information
+  */
+ struct scmi_chan_info {
++#ifndef __GENKSYMS__
+ 	int id;
++#endif
+ 	struct device *dev;
+ 	unsigned int rx_timeout_ms;
+ 	struct scmi_handle *handle;
+@@ -199,7 +203,11 @@
+  */
+ struct scmi_transport_ops {
+ 	int (*link_supplier)(struct device *dev);
++#ifdef __GENKSYMS__
++	bool (*chan_available)(struct device *dev, int idx);
++#else
+ 	bool (*chan_available)(struct device_node *of_node, int idx);
++#endif
+ 	int (*chan_setup)(struct scmi_chan_info *cinfo, struct device *dev,
+ 			  bool tx);
+ 	int (*chan_free)(int id, void *p, void *data);
+diff --git a/drivers/firmware/arm_scmi/driver.c b/drivers/firmware/arm_scmi/driver.c
+--- a/drivers/firmware/arm_scmi/driver.c
++++ b/drivers/firmware/arm_scmi/driver.c
+@@ -187,7 +187,7 @@
+ 		module_put(proto->owner);
+ }
+ 
+-int scmi_protocol_register(const struct scmi_protocol *proto)
++int __scmi_protocol_register(const struct scmi_protocol *proto)
+ {
+ 	int ret;
+ 
+@@ -215,9 +215,8 @@
+ 
+ 	return 0;
+ }
+-EXPORT_SYMBOL_GPL(scmi_protocol_register);
+-
+-void scmi_protocol_unregister(const struct scmi_protocol *proto)
++
++void __scmi_protocol_unregister(const struct scmi_protocol *proto)
+ {
+ 	spin_lock(&protocol_lock);
+ 	idr_remove(&scmi_protocols, proto->id);
+@@ -225,7 +224,6 @@
+ 
+ 	pr_debug("Unregistered SCMI Protocol 0x%x\n", proto->id);
+ }
+-EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
+ 
+ /**
+  * scmi_create_protocol_devices  - Create devices for all pending requests for
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -1165,7 +1165,9 @@
+  */
+ struct dwc3 {
+ 	struct work_struct	drd_work;
++#ifndef __GENKSYMS__
+ 	struct work_struct	err_recovery_work;
++#endif
+ 	struct dwc3_trb		*ep0_trb;
+ 	void			*bounce;
+ 	void			*scratchbuf;
+@@ -1182,8 +1184,10 @@
+ 	/* mode switching lock */
+ 	struct mutex		mutex;
+ 
++#ifndef __GENKSYMS__
+ 	/* serializes pull-up run/stop vs error recovery */
+ 	struct mutex		connect_mutex;
++#endif
+ 
+ 	struct device		*dev;
+ 	struct device		*sysdev;
+@@ -1227,8 +1231,10 @@
+ 	enum usb_dr_mode	role_switch_default_mode;
+ 
+ 	struct power_supply	*usb_psy;
++#ifndef __GENKSYMS__
+ 	struct work_struct	vbus_draw_work;
+ 	unsigned int		current_limit;
++#endif
+ 
+ 	u32			fladj;
+ 	u32			ref_clk_per;
+@@ -1303,9 +1309,11 @@
+ 	enum dwc3_ep0_next	ep0_next_event;
+ 	enum dwc3_ep0_state	ep0state;
+ 	enum dwc3_link_state	link_state;
++#ifndef __GENKSYMS__
+ 	enum dwc3_err_state	err_state;
+ 
+ 	u32			err_recovery_count;
++#endif
+ 
+ 	u16			u2sel;
+ 	u16			u2pel;
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -560,7 +560,11 @@
+ 	bool			mq_sysfs_init_done;
+ 	ANDROID_OEM_DATA(1);
+ 
++#ifdef __GENKSYMS__
++	ANDROID_KABI_RESERVE(1);
++#else
+ 	ANDROID_KABI_USE(1, struct mutex *rq_qos_mutex);
++#endif
+ 	ANDROID_KABI_RESERVE(2);
+ 	ANDROID_KABI_RESERVE(3);
+ 	ANDROID_KABI_RESERVE(4);
+diff --git a/include/linux/bpf.h b/include/linux/bpf.h
+--- a/include/linux/bpf.h
++++ b/include/linux/bpf.h
+@@ -1185,9 +1185,11 @@
+ 	bool sleepable;
+ 	bool tail_call_reachable;
+ 	bool xdp_has_frags;
++#ifndef __GENKSYMS__
+ 	bool is_extended; /* true if extended by freplace program */
+ 	u64 prog_array_member_cnt; /* counts how many times as member of prog_array */
+ 	struct mutex ext_mutex; /* mutex for is_extended and prog_array_member_cnt */
++#endif
+ 	/* BTF_KIND_FUNC_PROTO for valid attach_btf_id */
+ 	const struct btf_type *attach_func_proto;
+ 	/* function name for valid attach_btf_id */
+@@ -1297,6 +1299,9 @@
+ 	enum bpf_link_type type;
+ 	const struct bpf_link_ops *ops;
+ 	struct bpf_prog *prog;
++#ifdef __GENKSYMS__
++	struct work_struct work;
++#else
+ 	/* rcu is used before freeing, work can be used to schedule that
+ 	 * RCU-based freeing before that, so they never overlap
+ 	 */
+@@ -1304,6 +1309,7 @@
+ 		struct rcu_head rcu;
+ 		struct work_struct work;
+ 	};
++#endif
+ };
+ 
+ struct bpf_link_ops {
+@@ -1312,11 +1318,13 @@
+ 	 * waiting
+ 	 */
+ 	void (*dealloc)(struct bpf_link *link);
++#ifndef __GENKSYMS__
+ 	/* deallocate link resources callback, called after RCU grace period;
+ 	 * if underlying BPF program is sleepable we go through tasks trace
+ 	 * RCU GP and then "classic" RCU GP
+ 	 */
+ 	void (*dealloc_deferred)(struct bpf_link *link);
++#endif
+ 	int (*detach)(struct bpf_link *link);
+ 	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
+ 			   struct bpf_prog *old_prog);
+diff --git a/include/linux/can/skb.h b/include/linux/can/skb.h
+--- a/include/linux/can/skb.h
++++ b/include/linux/can/skb.h
+@@ -55,7 +55,9 @@
+  */
+ struct can_skb_priv {
+ 	int ifindex;
++#ifndef __GENKSYMS__
+ 	u32 skbcnt;
++#endif
+ 	unsigned int frame_len;
+ 	struct can_frame cf[];
+ };
+diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h
+--- a/include/linux/cgroup-defs.h
++++ b/include/linux/cgroup-defs.h
+@@ -424,11 +424,13 @@
+ 
+ 	int nr_threaded_children;	/* # of live threaded child cgroups */
+ 
++#ifndef __GENKSYMS__
+ 	/*
+ 	 * Sequence number for cgroup.kill. Incremented with both cgroup_mutex
+ 	 * and css_set_lock held. Readers hold either one.
+ 	 */
+ 	unsigned int kill_seq;
++#endif
+ 	struct kernfs_node *kn;		/* cgroup kernfs entry */
+ 	struct cgroup_file procs_file;	/* handle for "cgroup.procs" */
+ 	struct cgroup_file events_file;	/* handle for "cgroup.events" */
+diff --git a/include/linux/device-mapper.h b/include/linux/device-mapper.h
+--- a/include/linux/device-mapper.h
++++ b/include/linux/device-mapper.h
+@@ -361,10 +361,12 @@
+ 	 */
+ 	bool discards_supported:1;
+ 
++#ifndef __GENKSYMS__
+ 	/*
+ 	 * Set if this target requires stable data during writeback.
+ 	 */
+ 	bool needs_stable_writes:1;
++#endif
+ 
+ 	/*
+ 	 * Set if we need to limit the number of in-flight bios when swapping.
+diff --git a/include/linux/hw_random.h b/include/linux/hw_random.h
+--- a/include/linux/hw_random.h
++++ b/include/linux/hw_random.h
+@@ -16,7 +16,6 @@
+ #include <linux/types.h>
+ #include <linux/list.h>
+ #include <linux/kref.h>
+-#include <linux/workqueue.h>
+ 
+ /**
+  * struct hwrng - Hardware Random Number Generator driver
+@@ -50,7 +49,6 @@
+ 	/* internal. */
+ 	struct list_head list;
+ 	struct kref ref;
+-	struct work_struct cleanup_work;
+ 	struct completion cleanup_done;
+ 	struct completion dying;
+ };
+diff --git a/include/linux/i3c/master.h b/include/linux/i3c/master.h
+--- a/include/linux/i3c/master.h
++++ b/include/linux/i3c/master.h
+@@ -231,7 +231,9 @@
+ 	struct device dev;
+ 	struct i3c_dev_desc *desc;
+ 	struct i3c_bus *bus;
++#ifndef __GENKSYMS__
+ 	struct list_head node;
++#endif
+ };
+ 
+ /*
+diff --git a/include/linux/key-type.h b/include/linux/key-type.h
+--- a/include/linux/key-type.h
++++ b/include/linux/key-type.h
+@@ -159,7 +159,7 @@
+ 				     const void *in, const void *in2);
+ 
+ 	ANDROID_KABI_RESERVE(1);
+-	ANDROID_KABI_USE(2, atomic64_t index_id);
++	ANDROID_KABI_RESERVE(2);
+ 
+ 	/* internal fields */
+ 	struct list_head	link;		/* link in types list */
 diff --git a/include/linux/key.h b/include/linux/key.h
 --- a/include/linux/key.h
 +++ b/include/linux/key.h
@@ -309,18 +496,963 @@ diff --git a/include/linux/key.h b/include/linux/key.h
  		};
  	};
  
-diff --git a/include/linux/key-type.h b/include/linux/key-type.h
---- a/include/linux/key-type.h
-+++ b/include/linux/key-type.h
-@@ -159,7 +159,7 @@
- 				     const void *in, const void *in2);
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -565,7 +565,7 @@
+ #else
+ struct mm_struct_abi_extend {
+ 	struct task_dma_buf_info *dmabuf_info;
+-#ifdef CONFIG_FUTEX
++#if defined(CONFIG_FUTEX) && !defined(__GENKSYMS__)
+ 	atomic64_t futex_unique_id;
+ #endif
+ };
+diff --git a/include/linux/mtd/mtd.h b/include/linux/mtd/mtd.h
+--- a/include/linux/mtd/mtd.h
++++ b/include/linux/mtd/mtd.h
+@@ -379,7 +379,11 @@
  
+ 	struct module *owner;
+ 	struct device dev;
++#ifdef __GENKSYMS__
++	int usecount;
++#else
+ 	struct kref refcnt;
++#endif
+ 	struct mtd_debug_info dbg;
+ 	struct nvmem_device *nvmem;
+ 	struct nvmem_device *otp_user_nvmem;
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -2411,7 +2411,11 @@
+ 	netdevice_tracker	dev_registered_tracker;
+ 	struct rtnl_hw_stats64	*offload_xstats_l3;
+ 
++#ifdef __GENKSYMS__
++	ANDROID_KABI_RESERVE(1);
++#else
+ 	ANDROID_KABI_USE2(1, spinlock_t watchdog_lock, bool watchdog_ref_held);
++#endif
+ 	ANDROID_KABI_RESERVE(2);
+ 	ANDROID_KABI_RESERVE(3);
+ 	ANDROID_KABI_RESERVE(4);
+diff --git a/include/linux/netfilter.h b/include/linux/netfilter.h
+--- a/include/linux/netfilter.h
++++ b/include/linux/netfilter.h
+@@ -94,8 +94,6 @@
+ };
+ 
+ struct nf_hook_ops {
+-	struct rcu_head		rcu;
+-
+ 	/* User fills in from here down. */
+ 	nf_hookfn		*hook;
+ 	struct net_device	*dev;
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -80,8 +80,12 @@
+ 	struct pci_bus		*bus;		/* Bus this slot is on */
+ 	struct list_head	list;		/* Node in list of slots */
+ 	struct hotplug_slot	*hotplug;	/* Hotplug info (move here) */
++#ifdef __GENKSYMS__
++	unsigned char		number;		/* PCI_SLOT(pci_dev->devfn) */
++#else
+ 	u16			number;		/* PCI_SLOT(pci_dev->devfn) or PCI_SLOT_PLACEHOLDER */
+ 	unsigned int		per_func_slot:1; /* Allow per function slot */
++#endif
+ 	struct kobject		kobj;
+ };
+ 
+diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
+--- a/include/linux/sched/task.h
++++ b/include/linux/sched/task.h
+@@ -38,7 +38,9 @@
+ 	void *fn_arg;
+ 	struct cgroup *cgrp;
+ 	struct css_set *cset;
++#ifndef __GENKSYMS__
+ 	unsigned int kill_seq;
++#endif
+ };
+ 
+ /*
+diff --git a/include/linux/sched/user.h b/include/linux/sched/user.h
+--- a/include/linux/sched/user.h
++++ b/include/linux/sched/user.h
+@@ -37,10 +37,14 @@
+ 	struct ratelimit_state ratelimit;
+ 	ANDROID_OEM_DATA_ARRAY(1, 2);
+ 
++#ifdef __GENKSYMS__
++	atomic_long_t locked_vm;
++#else
+ #ifdef CONFIG_PERF_EVENTS
+ 	ANDROID_KABI_USE(1, atomic_long_t perf_mlock);
+ #else
  	ANDROID_KABI_RESERVE(1);
--	ANDROID_KABI_USE(2, atomic64_t index_id);
-+	ANDROID_KABI_RESERVE(2);
++#endif
+ #endif
+ 	ANDROID_KABI_RESERVE(2);
+ };
+diff --git a/include/linux/scmi_protocol.h b/include/linux/scmi_protocol.h
+--- a/include/linux/scmi_protocol.h
++++ b/include/linux/scmi_protocol.h
+@@ -829,6 +829,13 @@
  
- 	/* internal fields */
- 	struct list_head	link;		/* link in types list */
+ #define to_scmi_dev(d) container_of(d, struct scmi_device, dev)
+ 
++#ifdef __GENKSYMS__
++struct scmi_device *
++scmi_device_create(struct device_node *np, struct device *parent, int protocol,
++		   const char *name);
++void scmi_device_destroy(struct scmi_device *scmi_dev);
++#endif
++
+ struct scmi_device_id {
+ 	u8 protocol_id;
+ 	const char *name;
+diff --git a/include/linux/seq_buf.h b/include/linux/seq_buf.h
+--- a/include/linux/seq_buf.h
++++ b/include/linux/seq_buf.h
+@@ -14,11 +14,13 @@
+  * @buffer:	pointer to the buffer
+  * @size:	size of the buffer
+  * @len:	the amount of data inside the buffer
++ * @readpos:	The next position to read in the buffer.
+  */
+ struct seq_buf {
+ 	char			*buffer;
+ 	size_t			size;
+ 	size_t			len;
++	loff_t			readpos;
+ };
+ 
+ #define DECLARE_SEQ_BUF(NAME, SIZE)			\
+@@ -30,6 +32,7 @@
+ static inline void seq_buf_clear(struct seq_buf *s)
+ {
+ 	s->len = 0;
++	s->readpos = 0;
+ 	if (s->size)
+ 		s->buffer[0] = '\0';
+ }
+@@ -152,7 +155,7 @@
+ int seq_buf_vprintf(struct seq_buf *s, const char *fmt, va_list args);
+ extern int seq_buf_print_seq(struct seq_file *m, struct seq_buf *s);
+ extern int seq_buf_to_user(struct seq_buf *s, char __user *ubuf,
+-			   size_t start, int cnt);
++			   int cnt);
+ extern int seq_buf_puts(struct seq_buf *s, const char *str);
+ extern int seq_buf_putc(struct seq_buf *s, unsigned char c);
+ extern int seq_buf_putmem(struct seq_buf *s, const void *mem, unsigned int len);
+diff --git a/include/linux/trace_seq.h b/include/linux/trace_seq.h
+--- a/include/linux/trace_seq.h
++++ b/include/linux/trace_seq.h
+@@ -14,7 +14,6 @@
+ struct trace_seq {
+ 	char			buffer[PAGE_SIZE];
+ 	struct seq_buf		seq;
+-	size_t			readpos;
+ 	int			full;
+ };
+ 
+@@ -23,7 +22,6 @@
+ {
+ 	seq_buf_init(&s->seq, s->buffer, PAGE_SIZE);
+ 	s->full = 0;
+-	s->readpos = 0;
+ }
+ 
+ /**
+diff --git a/include/linux/tty.h b/include/linux/tty.h
+--- a/include/linux/tty.h
++++ b/include/linux/tty.h
+@@ -251,7 +251,11 @@
+ 	struct work_struct SAK_work;
+ 	struct tty_port *port;
+ 
++#ifdef __GENKSYMS__
++	ANDROID_KABI_RESERVE(1);
++#else
+ 	ANDROID_KABI_USE(1, wait_queue_head_t *break_wait);
++#endif
+ 	ANDROID_KABI_RESERVE(2);
+ } __randomize_layout;
+ 
+diff --git a/include/linux/unicode.h b/include/linux/unicode.h
+--- a/include/linux/unicode.h
++++ b/include/linux/unicode.h
+@@ -51,7 +51,9 @@
+ 	unsigned int version;
+ 	const struct utf8data *ntab[UTF8_NMAX];
+ 	const struct utf8data_table *tables;
++#ifndef __GENKSYMS__
+ 	struct rcu_head rcu;
++#endif
+ };
+ 
+ int utf8_validate(const struct unicode_map *um, const struct qstr *str);
+diff --git a/include/linux/usb/gadget.h b/include/linux/usb/gadget.h
+--- a/include/linux/usb/gadget.h
++++ b/include/linux/usb/gadget.h
+@@ -113,7 +113,9 @@
+ 	unsigned		zero:1;
+ 	unsigned		short_not_ok:1;
+ 	unsigned		dma_mapped:1;
++#ifndef __GENKSYMS__
+ 	unsigned		sg_was_mapped:1;
++#endif
+ 
+ 	void			(*complete)(struct usb_ep *ep,
+ 					struct usb_request *req);
+diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
+--- a/include/net/bluetooth/hci_core.h
++++ b/include/net/bluetooth/hci_core.h
+@@ -61,7 +61,7 @@
+ 		NAME_PENDING,
+ 		NAME_KNOWN,
+ 	} name_state;
+-	unsigned long		timestamp;
++	__u32			timestamp;
+ 	struct inquiry_data	data;
+ };
+ 
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -6098,7 +6098,7 @@
+ 	enum ieee80211_bss_type conn_bss_type;
+ 	u32 conn_owner_nlportid;
+ 
+-	struct wiphy_work disconnect_wk;
++	struct work_struct disconnect_wk;
+ 	u8 disconnect_bssid[ETH_ALEN];
+ 
+ 	struct list_head event_list;
+@@ -6139,7 +6139,7 @@
+ 
+ 	struct list_head pmsr_list;
+ 	spinlock_t pmsr_lock;
+-	struct wiphy_work pmsr_free_wk;
++	struct work_struct pmsr_free_wk;
+ 
+ 	unsigned long unprot_beacon_reported;
+ 
+diff --git a/include/net/dropreason.h b/include/net/dropreason.h
+--- a/include/net/dropreason.h
++++ b/include/net/dropreason.h
+@@ -299,8 +299,10 @@
+ 	 * MTU)
+ 	 */
+ 	SKB_DROP_REASON_PKT_TOO_BIG,
++#ifndef __GENKSYMS__
+ 	/** @SKB_DROP_REASON_TC_CHAIN_NOTFOUND: tc chain lookup failed. */
+ 	SKB_DROP_REASON_TC_CHAIN_NOTFOUND,
++#endif
+ 	/**
+ 	 * @SKB_DROP_REASON_MAX: the maximum of drop reason, which shouldn't be
+ 	 * used as a real 'reason'
+diff --git a/include/net/dsa.h b/include/net/dsa.h
+--- a/include/net/dsa.h
++++ b/include/net/dsa.h
+@@ -310,7 +310,9 @@
+ 	struct devlink_port	devlink_port;
+ 	struct phylink		*pl;
+ 	struct phylink_config	pl_config;
++#ifndef __GENKSYMS__
+ 	netdevice_tracker	conduit_tracker;
++#endif
+ 	struct dsa_lag		*lag;
+ 	struct net_device	*hsr_dev;
+ 
+diff --git a/include/net/inet_connection_sock.h b/include/net/inet_connection_sock.h
+--- a/include/net/inet_connection_sock.h
++++ b/include/net/inet_connection_sock.h
+@@ -97,10 +97,12 @@
+ 	unsigned long		  icsk_timeout;
+ 	struct timer_list	  icsk_retransmit_timer;
+ 	struct timer_list	  icsk_delack_timer;
++#ifndef __GENKSYMS__
+ 	union {
+ 		struct timer_list icsk_keepalive_timer;
+ 		struct timer_list mptcp_tout_timer;
+ 	};
++#endif
+ 	__u32			  icsk_rto;
+ 	__u32                     icsk_rto_min;
+ 	__u32                     icsk_delack_max;
+diff --git a/include/net/netfilter/nf_conntrack_expect.h b/include/net/netfilter/nf_conntrack_expect.h
+--- a/include/net/netfilter/nf_conntrack_expect.h
++++ b/include/net/netfilter/nf_conntrack_expect.h
+@@ -32,6 +32,29 @@
+ 	/* Flags */
+ 	unsigned int flags;
+ 
++#ifdef __GENKSYMS__
++	/* Function to call after setup and insertion */
++	void (*expectfn)(struct nf_conn *new,
++			 struct nf_conntrack_expect *this);
++
++	/* Helper to assign to new connection */
++	struct nf_conntrack_helper *helper;
++
++	/* The conntrack of the master connection */
++	struct nf_conn *master;
++
++	/* Timer function; deletes the expectation. */
++	struct timer_list timeout;
++
++	/* Usage count. */
++	refcount_t use;
++
++	/* Flags */
++	unsigned int flags;
++
++	/* Expectation class */
++	unsigned int class;
++#else
+ 	/* Expectation class */
+ 	unsigned int class;
+ 
+@@ -50,6 +73,7 @@
+ 
+ 	/* jiffies32 when this expectation expires */
+ 	u32 timeout;
++#endif
+ #if IS_ENABLED(CONFIG_NF_NAT)
+ 	union nf_inet_addr saved_addr;
+ 	/* This is the original per-proto part, used to map the
+diff --git a/include/net/netfilter/nf_conntrack_timeout.h b/include/net/netfilter/nf_conntrack_timeout.h
+--- a/include/net/netfilter/nf_conntrack_timeout.h
++++ b/include/net/netfilter/nf_conntrack_timeout.h
+@@ -12,7 +12,9 @@
+ #define CTNL_TIMEOUT_NAME_MAX	32
+ 
+ struct nf_ct_timeout {
++#ifndef __GENKSYMS__
+ 	refcount_t		refcnt;
++#endif
+ 	__u16			l3num;
+ 	const struct nf_conntrack_l4proto *l4proto;
+ 	struct rcu_head		rcu;
+diff --git a/include/net/netfilter/nf_queue.h b/include/net/netfilter/nf_queue.h
+--- a/include/net/netfilter/nf_queue.h
++++ b/include/net/netfilter/nf_queue.h
+@@ -21,7 +21,9 @@
+ 	struct net_device	*physout;
+ #endif
+ 	struct nf_hook_state	state;
++#ifndef __GENKSYMS__
+ 	bool			nf_ct_is_unconfirmed;
++#endif
+ 	u16			size; /* sizeof(entry) + saved route keys */
+ 
+ 	/* extra space to store route keys */
+diff --git a/include/net/netns/mpls.h b/include/net/netns/mpls.h
+--- a/include/net/netns/mpls.h
++++ b/include/net/netns/mpls.h
+@@ -16,7 +16,9 @@
+ 	int default_ttl;
+ 	size_t platform_labels;
+ 	struct mpls_route __rcu * __rcu *platform_label;
++#ifndef __GENKSYMS__
+ 	seqcount_t platform_label_seq;
++#endif
+ 
+ 	struct ctl_table_header *ctl;
+ };
+diff --git a/include/net/netns/xfrm.h b/include/net/netns/xfrm.h
+--- a/include/net/netns/xfrm.h
++++ b/include/net/netns/xfrm.h
+@@ -24,7 +24,9 @@
+ struct xfrm_policy_hthresh {
+ 	struct work_struct	work;
+ 	seqlock_t		lock;
++#ifndef __GENKSYMS__
+ 	bool			work_disabled;
++#endif
+ 	u8			lbits4;
+ 	u8			rbits4;
+ 	u8			lbits6;
+diff --git a/include/net/nexthop.h b/include/net/nexthop.h
+--- a/include/net/nexthop.h
++++ b/include/net/nexthop.h
+@@ -97,7 +97,11 @@
+ 
+ struct nh_grp_entry {
+ 	struct nexthop	*nh;
++#ifdef __GENKSYMS__
++	u8		weight;
++#else
+ 	u16		weight;
++#endif
+ 
+ 	union {
+ 		struct {
+@@ -180,7 +184,11 @@
+ };
+ 
+ struct nh_notifier_grp_entry_info {
++#ifdef __GENKSYMS__
++	u8 weight;
++#else
+ 	u16 weight;
++#endif
+ 	struct nh_notifier_single_info nh;
+ };
+ 
+diff --git a/include/net/pkt_sched.h b/include/net/pkt_sched.h
+--- a/include/net/pkt_sched.h
++++ b/include/net/pkt_sched.h
+@@ -218,7 +218,9 @@
+ 
+ struct tc_skb_cb {
+ 	struct qdisc_skb_cb qdisc_cb;
++#ifndef __GENKSYMS__
+ 	u32 drop_reason;
++#endif
+ 
+ 	u16 zone; /* Only valid if post_ct = true */
+ 	u16 mru;
+diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
+--- a/include/net/sch_generic.h
++++ b/include/net/sch_generic.h
+@@ -118,7 +118,9 @@
+ 	struct qdisc_skb_head	q;
+ 	struct gnet_stats_basic_sync bstats;
+ 	struct gnet_stats_queue	qstats;
++#ifndef __GENKSYMS__
+ 	int                     owner;
++#endif
+ 	unsigned long		state;
+ 	unsigned long		state2; /* must be written under qdisc spinlock */
+ 	struct Qdisc            *next_sched;
+@@ -383,10 +385,12 @@
+ 						struct nlattr **tca,
+ 						struct netlink_ext_ack *extack);
+ 	void			(*tmplt_destroy)(void *tmplt_priv);
++#ifndef __GENKSYMS__
+ 	void			(*tmplt_reoffload)(struct tcf_chain *chain,
+ 						   bool add,
+ 						   flow_setup_cb_t *cb,
+ 						   void *cb_priv);
++#endif
+ 
+ 	/* rtnetlink specific */
+ 	int			(*dump)(struct net*, struct tcf_proto*, void *,
+@@ -433,8 +437,10 @@
+ 	 */
+ 	spinlock_t		lock;
+ 	bool			deleting;
++#ifndef __GENKSYMS__
+ 	bool			counted;
+ 	bool			usesw;
++#endif
+ 	refcount_t		refcnt;
+ 	struct rcu_head		rcu;
+ 	struct hlist_node	destroy_ht_node;
+@@ -483,7 +489,9 @@
+ 	struct flow_block flow_block;
+ 	struct list_head owner_list;
+ 	bool keep_dst;
++#ifndef __GENKSYMS__
+ 	atomic_t useswcnt;
++#endif
+ 	atomic_t offloadcnt; /* Number of oddloaded filters */
+ 	unsigned int nooffloaddevcnt; /* Number of devs unable to do offload */
+ 	unsigned int lockeddevcnt; /* Number of devs that require rtnl lock. */
+diff --git a/include/net/secure_seq.h b/include/net/secure_seq.h
+--- a/include/net/secure_seq.h
++++ b/include/net/secure_seq.h
+@@ -38,16 +38,12 @@
+ 			    const __be32 *daddr,
+ 			    __be16 sport, __be16 dport);
+ 
+-static inline u32 secure_tcpv6_seq(const __be32 *saddr, const __be32 *daddr,
+-				   __be16 sport, __be16 dport)
+-{
+-	union tcp_seq_and_ts_off ts;
+-
+-	ts = secure_tcpv6_seq_and_ts_off(&init_net, saddr, daddr,
+-					 sport, dport);
+-
+-	return ts.seq;
+-}
++u32 secure_tcp_seq(__be32 saddr, __be32 daddr,
++		   __be16 sport, __be16 dport);
++u32 secure_tcpv6_seq(const __be32 *saddr, const __be32 *daddr,
++		     __be16 sport, __be16 dport);
++u32 secure_tcpv6_ts_off(const struct net *net,
++			const __be32 *saddr, const __be32 *daddr);
+ 
+ u64 secure_dccp_sequence_number(__be32 saddr, __be32 daddr,
+ 				__be16 sport, __be16 dport);
+diff --git a/include/net/sock.h b/include/net/sock.h
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -465,10 +465,14 @@
+ 	__u32			sk_dst_pending_confirm;
+ 	u32			sk_pacing_status; /* see enum sk_pacing */
+ 	long			sk_sndtimeo;
++#ifdef __GENKSYMS__
++	struct timer_list	sk_timer;
++#else
+ 	union {
+ 		struct timer_list sk_timer;
+ 		struct timer_list mptcp_retransmit_timer;
+ 	};
++#endif
+ 	__u32			sk_priority;
+ 	__u32			sk_mark;
+ 	unsigned long		sk_pacing_rate; /* bytes per second */
+diff --git a/include/net/strparser.h b/include/net/strparser.h
+--- a/include/net/strparser.h
++++ b/include/net/strparser.h
+@@ -91,11 +91,19 @@
+ struct strparser {
+ 	struct sock *sk;
+ 
++#ifdef __GENKSYMS__
++	u32 stopped : 1;
++	u32 paused : 1;
++	u32 aborted : 1;
++	u32 interrupted : 1;
++	u32 unrecov_intr : 1;
++#else
+ 	u8 stopped;
+ 	u8 paused;
+ 	u8 aborted;
+ 	u8 interrupted;
+ 	u8 unrecov_intr;
++#endif
+ 
+ 	struct sk_buff **skb_nextp;
+ 	struct sk_buff *skb_head;
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -2152,9 +2152,14 @@
+ 				       struct sk_buff *skb,
+ 				       struct flowi *fl,
+ 				       struct request_sock *req);
++#ifdef __GENKSYMS__
++	u32 (*init_seq)(const struct sk_buff *skb);
++	u32 (*init_ts_off)(const struct net *net, const struct sk_buff *skb);
++#else
+ 	union tcp_seq_and_ts_off (*init_seq_and_ts_off)(
+ 					const struct net *net,
+ 					const struct sk_buff *skb);
++#endif
+ 	int (*send_synack)(const struct sock *sk, struct dst_entry *dst,
+ 			   struct flowi *fl, struct request_sock *req,
+ 			   struct tcp_fastopen_cookie *foc,
+diff --git a/include/scsi/scsi_host.h b/include/scsi/scsi_host.h
+--- a/include/scsi/scsi_host.h
++++ b/include/scsi/scsi_host.h
+@@ -727,7 +727,11 @@
+ 	 */
+ 	struct device *dma_dev;
+ 
++#ifdef __GENKSYMS__
++	ANDROID_KABI_RESERVE(1);
++#else
+ 	ANDROID_KABI_USE(1, struct scsi_eh_work *eh_work);
++#endif
+ 
+ 	/*
+ 	 * We should ensure that this is aligned, both for better performance
+diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -1177,7 +1177,9 @@
+ 	unsigned int		core_forceidle_seq;
+ 	unsigned int		core_forceidle_occupation;
+ 	u64			core_forceidle_start;
++#ifndef __GENKSYMS__
+ 	unsigned int		core_pick_in_flight;
++#endif
+ #endif
+ 
+ 	ANDROID_VENDOR_DATA_ARRAY(1, 1);
+diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
+--- a/kernel/trace/trace.c
++++ b/kernel/trace/trace.c
+@@ -1691,15 +1691,15 @@
+ {
+ 	int len;
+ 
+-	if (trace_seq_used(s) <= s->readpos)
++	if (trace_seq_used(s) <= s->seq.readpos)
+ 		return -EBUSY;
+ 
+-	len = trace_seq_used(s) - s->readpos;
++	len = trace_seq_used(s) - s->seq.readpos;
+ 	if (cnt > len)
+ 		cnt = len;
+-	memcpy(buf, s->buffer + s->readpos, cnt);
+-
+-	s->readpos += cnt;
++	memcpy(buf, s->buffer + s->seq.readpos, cnt);
++
++	s->seq.readpos += cnt;
+ 	return cnt;
+ }
+ 
+@@ -6894,7 +6894,7 @@
+ 
+ 	/* Now copy what we have to the user */
+ 	sret = trace_seq_to_user(&iter->seq, ubuf, cnt);
+-	if (iter->seq.readpos >= trace_seq_used(&iter->seq))
++	if (iter->seq.seq.readpos >= trace_seq_used(&iter->seq))
+ 		trace_seq_init(&iter->seq);
+ 
+ 	/*
+diff --git a/kernel/trace/trace_seq.c b/kernel/trace/trace_seq.c
+--- a/kernel/trace/trace_seq.c
++++ b/kernel/trace/trace_seq.c
+@@ -354,7 +354,7 @@
+  * @cnt: The amount to copy
+  *
+  * Copies the sequence buffer into the userspace memory pointed to
+- * by @ubuf. It starts from the last read position (@s->readpos)
++ * by @ubuf. It starts from the last read position (@s->seq.readpos)
+  * and writes up to @cnt characters or till it reaches the end of
+  * the content in the buffer (@s->len), which ever comes first.
+  *
+@@ -363,18 +363,14 @@
+  *
+  * On failure it returns -EBUSY if all of the content in the
+  * sequence has been already read, which includes nothing in the
+- * sequence (@s->len == @s->readpos).
++ * sequence (@s->len == @s->seq.readpos).
+  *
+  * Returns -EFAULT if the copy to userspace fails.
+  */
+ int trace_seq_to_user(struct trace_seq *s, char __user *ubuf, int cnt)
+ {
+-	int ret;
+-	__trace_seq_init(s);
+-	ret = seq_buf_to_user(&s->seq, ubuf, s->readpos, cnt);
+-	if (ret > 0)
+-		s->readpos += ret;
+-	return ret;
++	__trace_seq_init(s);
++	return seq_buf_to_user(&s->seq, ubuf, cnt);
+ }
+ EXPORT_SYMBOL_GPL(trace_seq_to_user);
+ 
+diff --git a/lib/seq_buf.c b/lib/seq_buf.c
+--- a/lib/seq_buf.c
++++ b/lib/seq_buf.c
+@@ -322,24 +322,23 @@
+  * seq_buf_to_user - copy the sequence buffer to user space
+  * @s: seq_buf descriptor
+  * @ubuf: The userspace memory location to copy to
+- * @start: The first byte in the buffer to copy
+  * @cnt: The amount to copy
+  *
+  * Copies the sequence buffer into the userspace memory pointed to
+- * by @ubuf. It starts from @start and writes up to @cnt characters
+- * or until it reaches the end of the content in the buffer (@s->len),
+- * whichever comes first.
++ * by @ubuf. It starts from the last read position (@s->readpos)
++ * and writes up to @cnt characters or till it reaches the end of
++ * the content in the buffer (@s->len), which ever comes first.
+  *
+  * On success, it returns a positive number of the number of bytes
+  * it copied.
+  *
+  * On failure it returns -EBUSY if all of the content in the
+  * sequence has been already read, which includes nothing in the
+- * sequence (@s->len == @start).
++ * sequence (@s->len == @s->readpos).
+  *
+  * Returns -EFAULT if the copy to userspace fails.
+  */
+-int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, size_t start, int cnt)
++int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, int cnt)
+ {
+ 	int len;
+ 	int ret;
+@@ -349,17 +348,20 @@
+ 
+ 	len = seq_buf_used(s);
+ 
+-	if (len <= start)
++	if (len <= s->readpos)
+ 		return -EBUSY;
+ 
+-	len -= start;
++	len -= s->readpos;
+ 	if (cnt > len)
+ 		cnt = len;
+-	ret = copy_to_user(ubuf, s->buffer + start, cnt);
++	ret = copy_to_user(ubuf, s->buffer + s->readpos, cnt);
+ 	if (ret == cnt)
+ 		return -EFAULT;
+ 
+-	return cnt - ret;
++	cnt -= ret;
++
++	s->readpos += cnt;
++	return cnt;
+ }
+ 
+ /**
+diff --git a/net/core/secure_seq.c b/net/core/secure_seq.c
+--- a/net/core/secure_seq.c
++++ b/net/core/secure_seq.c
+@@ -77,6 +77,20 @@
+ }
+ EXPORT_SYMBOL(secure_tcpv6_seq_and_ts_off);
+ 
++u32 secure_tcpv6_seq(const __be32 *saddr, const __be32 *daddr, __be16 sport, __be16 dport)
++{
++	union tcp_seq_and_ts_off ts = secure_tcpv6_seq_and_ts_off(&init_net, saddr, daddr, sport, dport);
++	return ts.seq;
++}
++EXPORT_SYMBOL(secure_tcpv6_seq);
++
++u32 secure_tcpv6_ts_off(const struct net *net, const __be32 *saddr, const __be32 *daddr)
++{
++	union tcp_seq_and_ts_off ts = secure_tcpv6_seq_and_ts_off(net, saddr, daddr, 0, 0);
++	return ts.ts_off;
++}
++EXPORT_SYMBOL(secure_tcpv6_ts_off);
++
+ u64 secure_ipv6_port_ephemeral(const __be32 *saddr, const __be32 *daddr,
+ 			       __be16 dport)
+ {
+@@ -123,6 +137,13 @@
+ 	return st;
+ }
+ EXPORT_SYMBOL_GPL(secure_tcp_seq_and_ts_off);
++
++u32 secure_tcp_seq(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport)
++{
++	union tcp_seq_and_ts_off ts = secure_tcp_seq_and_ts_off(&init_net, saddr, daddr, sport, dport);
++	return ts.seq;
++}
++EXPORT_SYMBOL(secure_tcp_seq);
+ 
+ u64 secure_ipv4_port_ephemeral(__be32 saddr, __be32 daddr, __be16 dport)
+ {
+diff --git a/net/ipv4/netfilter/iptable_nat.c b/net/ipv4/netfilter/iptable_nat.c
+--- a/net/ipv4/netfilter/iptable_nat.c
++++ b/net/ipv4/netfilter/iptable_nat.c
+@@ -79,7 +79,8 @@
+ 			while (i)
+ 				nf_nat_ipv4_unregister_fn(net, &ops[--i]);
+ 
+-			kfree_rcu(ops, rcu);
++			synchronize_rcu();
++			kfree(ops);
+ 			return ret;
+ 		}
+ 	}
+@@ -100,7 +101,8 @@
+ 	for (i = 0; i < ARRAY_SIZE(nf_nat_ipv4_ops); i++)
+ 		nf_nat_ipv4_unregister_fn(net, &ops[i]);
+ 
+-	kfree_rcu(ops, rcu);
++	synchronize_rcu();
++	kfree(ops);
+ }
+ 
+ static int iptable_nat_table_init(struct net *net)
+diff --git a/net/ipv6/netfilter/ip6table_nat.c b/net/ipv6/netfilter/ip6table_nat.c
+--- a/net/ipv6/netfilter/ip6table_nat.c
++++ b/net/ipv6/netfilter/ip6table_nat.c
+@@ -81,7 +81,8 @@
+ 			while (i)
+ 				nf_nat_ipv6_unregister_fn(net, &ops[--i]);
+ 
+-			kfree_rcu(ops, rcu);
++			synchronize_rcu();
++			kfree(ops);
+ 			return ret;
+ 		}
+ 	}
+@@ -102,7 +103,8 @@
+ 	for (i = 0; i < ARRAY_SIZE(nf_nat_ipv6_ops); i++)
+ 		nf_nat_ipv6_unregister_fn(net, &ops[i]);
+ 
+-	kfree_rcu(ops, rcu);
++	synchronize_rcu();
++	kfree(ops);
+ }
+ 
+ static int ip6table_nat_table_init(struct net *net)
+diff --git a/net/netfilter/nf_nat_core.c b/net/netfilter/nf_nat_core.c
+--- a/net/netfilter/nf_nat_core.c
++++ b/net/netfilter/nf_nat_core.c
+@@ -1054,7 +1054,8 @@
+ 				priv = nat_ops[i].priv;
+ 				kfree_rcu(priv, rcu_head);
+ 			}
+-			kfree_rcu(nat_ops, rcu);
++			synchronize_rcu();
++			kfree(nat_ops);
+ 			return ret;
+ 		}
+ 
+@@ -1118,7 +1119,8 @@
+ 		}
+ 
+ 		nat_proto_net->nat_hook_ops = NULL;
+-		kfree_rcu(nat_ops, rcu);
++		synchronize_rcu();
++		kfree(nat_ops);
+ 	}
+ unlock:
+ 	mutex_unlock(&nf_nat_proto_mutex);
+diff --git a/net/wireless/core.c b/net/wireless/core.c
+--- a/net/wireless/core.c
++++ b/net/wireless/core.c
+@@ -1234,7 +1234,7 @@
+ 	ASSERT_RTNL();
+ 	lockdep_assert_held(&rdev->wiphy.mtx);
+ 
+-	wiphy_work_flush(wdev->wiphy, &wdev->pmsr_free_wk);
++	flush_work(&wdev->pmsr_free_wk);
+ 
+ 	nl80211_notify_iface(rdev, wdev, NL80211_CMD_DEL_INTERFACE);
+ 
+@@ -1249,7 +1249,6 @@
+ 	list_del_rcu(&wdev->list);
+ 	synchronize_net();
+ 	rdev->devlist_generation++;
+-	wiphy_work_cancel(wdev->wiphy, &wdev->disconnect_wk);
+ 
+ 	cfg80211_mlme_purge_registrations(wdev);
+ 
+@@ -1412,7 +1411,7 @@
+ 	INIT_LIST_HEAD(&wdev->mgmt_registrations);
+ 	INIT_LIST_HEAD(&wdev->pmsr_list);
+ 	spin_lock_init(&wdev->pmsr_lock);
+-	wiphy_work_init(&wdev->pmsr_free_wk, cfg80211_pmsr_free_wk);
++	INIT_WORK(&wdev->pmsr_free_wk, cfg80211_pmsr_free_wk);
+ 
+ #ifdef CONFIG_CFG80211_WEXT
+ 	wdev->wext.default_key = -1;
+@@ -1432,7 +1431,7 @@
+ 	     wdev->iftype == NL80211_IFTYPE_ADHOC) && !wdev->use_4addr)
+ 		wdev->netdev->priv_flags |= IFF_DONT_BRIDGE;
+ 
+-	wiphy_work_init(&wdev->disconnect_wk, cfg80211_autodisconnect_wk);
++	INIT_WORK(&wdev->disconnect_wk, cfg80211_autodisconnect_wk);
+ }
+ 
+ void cfg80211_register_wdev(struct cfg80211_registered_device *rdev,
+@@ -1540,9 +1539,9 @@
+ 		wiphy_lock(&rdev->wiphy);
+ 		cfg80211_leave(rdev, wdev);
+ 		cfg80211_remove_links(wdev);
++		wiphy_unlock(&rdev->wiphy);
+ 		/* since we just did cfg80211_leave() nothing to do there */
+-		wiphy_work_cancel(wdev->wiphy, &wdev->disconnect_wk);
+-		wiphy_unlock(&rdev->wiphy);
++		cancel_work_sync(&wdev->disconnect_wk);
+ 		break;
+ 	case NETDEV_DOWN:
+ 		wiphy_lock(&rdev->wiphy);
+diff --git a/net/wireless/core.h b/net/wireless/core.h
+--- a/net/wireless/core.h
++++ b/net/wireless/core.h
+@@ -421,7 +421,7 @@
+ 				const u8 *td_bitmap, u8 td_bitmap_len);
+ int cfg80211_mgd_wext_connect(struct cfg80211_registered_device *rdev,
+ 			      struct wireless_dev *wdev);
+-void cfg80211_autodisconnect_wk(struct wiphy *wiphy, struct wiphy_work *work);
++void cfg80211_autodisconnect_wk(struct work_struct *work);
+ 
+ /* SME implementation */
+ void cfg80211_conn_work(struct work_struct *work);
+@@ -571,7 +571,7 @@
+ 
+ void cfg80211_release_pmsr(struct wireless_dev *wdev, u32 portid);
+ void cfg80211_pmsr_wdev_down(struct wireless_dev *wdev);
+-void cfg80211_pmsr_free_wk(struct wiphy *wiphy, struct wiphy_work *work);
++void cfg80211_pmsr_free_wk(struct work_struct *work);
+ 
+ void cfg80211_remove_link(struct wireless_dev *wdev, unsigned int link_id);
+ void cfg80211_remove_links(struct wireless_dev *wdev);
+diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -19845,8 +19845,7 @@
+ 				wdev->nl_owner_dead = true;
+ 				schedule_work(&rdev->destroy_work);
+ 			} else if (wdev->conn_owner_nlportid == notify->portid) {
+-				wiphy_work_queue(wdev->wiphy,
+-						 &wdev->disconnect_wk);
++				schedule_work(&wdev->disconnect_wk);
+ 			}
+ 
+ 			cfg80211_release_pmsr(wdev, notify->portid);
+diff --git a/net/wireless/pmsr.c b/net/wireless/pmsr.c
+--- a/net/wireless/pmsr.c
++++ b/net/wireless/pmsr.c
+@@ -635,7 +635,7 @@
+ 	}
+ }
+ 
+-void cfg80211_pmsr_free_wk(struct wiphy *wiphy, struct wiphy_work *work)
++void cfg80211_pmsr_free_wk(struct work_struct *work)
+ {
+ 	struct wireless_dev *wdev = container_of(work, struct wireless_dev,
+ 						 pmsr_free_wk);
+@@ -657,7 +657,10 @@
+ 	}
+ 	spin_unlock_bh(&wdev->pmsr_lock);
+ 
+-	wiphy_work_cancel(wdev->wiphy, &wdev->pmsr_free_wk);
++	/* Drop wdev->mtx around cancel_work_sync to avoid AB-BA deadlock with pmsr_free_wk. */
++	wdev_unlock(wdev);
++	cancel_work_sync(&wdev->pmsr_free_wk);
++	wdev_lock(wdev);
+ 	if (found)
+ 		cfg80211_pmsr_process_abort(wdev);
+ 
+@@ -672,7 +675,7 @@
+ 	list_for_each_entry(req, &wdev->pmsr_list, list) {
+ 		if (req->nl_portid == portid) {
+ 			req->nl_portid = 0;
+-			wiphy_work_queue(wdev->wiphy, &wdev->pmsr_free_wk);
++			schedule_work(&wdev->pmsr_free_wk);
+ 		}
+ 	}
+ 	spin_unlock_bh(&wdev->pmsr_lock);
+diff --git a/net/wireless/sme.c b/net/wireless/sme.c
+--- a/net/wireless/sme.c
++++ b/net/wireless/sme.c
+@@ -1578,12 +1578,13 @@
+  * Used to clean up after the connection / connection attempt owner socket
+  * disconnects
+  */
+-void cfg80211_autodisconnect_wk(struct wiphy *wiphy, struct wiphy_work *work)
++void cfg80211_autodisconnect_wk(struct work_struct *work)
+ {
+ 	struct wireless_dev *wdev =
+ 		container_of(work, struct wireless_dev, disconnect_wk);
+-	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
+-
++	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wdev->wiphy);
++
++	wiphy_lock(wdev->wiphy);
+ 	wdev_lock(wdev);
+ 
+ 	if (wdev->conn_owner_nlportid) {
+@@ -1622,4 +1623,5 @@
+ 	}
+ 
+ 	wdev_unlock(wdev);
+-}
++	wiphy_unlock(wdev->wiphy);
++}
 diff --git a/security/keys/keyring.c b/security/keys/keyring.c
 --- a/security/keys/keyring.c
 +++ b/security/keys/keyring.c
@@ -563,780 +1695,28 @@ diff --git a/security/keys/keyring.c b/security/keys/keyring.c
  
  	i = sizeof(a->desc);
  	if (a->desc_len <= i)
-diff --git a/include/linux/seq_buf.h b/include/linux/seq_buf.h
---- a/include/linux/seq_buf.h
-+++ b/include/linux/seq_buf.h
-@@ -14,11 +14,13 @@
-  * @buffer:	pointer to the buffer
-  * @size:	size of the buffer
-  * @len:	the amount of data inside the buffer
-+ * @readpos:	The next position to read in the buffer.
-  */
- struct seq_buf {
- 	char			*buffer;
- 	size_t			size;
- 	size_t			len;
-+	loff_t			readpos;
- };
+diff --git a/sound/usb/card.h b/sound/usb/card.h
+--- a/sound/usb/card.h
++++ b/sound/usb/card.h
+@@ -91,7 +91,11 @@
+ 	struct snd_urb_ctx urb[MAX_URBS];
  
- #define DECLARE_SEQ_BUF(NAME, SIZE)			\
-@@ -30,6 +32,7 @@
- static inline void seq_buf_clear(struct seq_buf *s)
- {
- 	s->len = 0;
-+	s->readpos = 0;
- 	if (s->size)
- 		s->buffer[0] = '\0';
- }
-@@ -152,7 +155,7 @@
- int seq_buf_vprintf(struct seq_buf *s, const char *fmt, va_list args);
- extern int seq_buf_print_seq(struct seq_file *m, struct seq_buf *s);
- extern int seq_buf_to_user(struct seq_buf *s, char __user *ubuf,
--			   size_t start, int cnt);
-+			   int cnt);
- extern int seq_buf_puts(struct seq_buf *s, const char *str);
- extern int seq_buf_putc(struct seq_buf *s, unsigned char c);
- extern int seq_buf_putmem(struct seq_buf *s, const void *mem, unsigned int len);
-diff --git a/include/linux/trace_seq.h b/include/linux/trace_seq.h
---- a/include/linux/trace_seq.h
-+++ b/include/linux/trace_seq.h
-@@ -14,7 +14,6 @@
- struct trace_seq {
- 	char			buffer[PAGE_SIZE];
- 	struct seq_buf		seq;
--	size_t			readpos;
- 	int			full;
- };
- 
-@@ -23,7 +22,6 @@
- {
- 	seq_buf_init(&s->seq, s->buffer, PAGE_SIZE);
- 	s->full = 0;
--	s->readpos = 0;
- }
- 
- /**
-diff --git a/lib/seq_buf.c b/lib/seq_buf.c
---- a/lib/seq_buf.c
-+++ b/lib/seq_buf.c
-@@ -322,24 +322,23 @@
-  * seq_buf_to_user - copy the sequence buffer to user space
-  * @s: seq_buf descriptor
-  * @ubuf: The userspace memory location to copy to
-- * @start: The first byte in the buffer to copy
-  * @cnt: The amount to copy
-  *
-  * Copies the sequence buffer into the userspace memory pointed to
-- * by @ubuf. It starts from @start and writes up to @cnt characters
-- * or until it reaches the end of the content in the buffer (@s->len),
-- * whichever comes first.
-+ * by @ubuf. It starts from the last read position (@s->readpos)
-+ * and writes up to @cnt characters or till it reaches the end of
-+ * the content in the buffer (@s->len), which ever comes first.
-  *
-  * On success, it returns a positive number of the number of bytes
-  * it copied.
-  *
-  * On failure it returns -EBUSY if all of the content in the
-  * sequence has been already read, which includes nothing in the
-- * sequence (@s->len == @start).
-+ * sequence (@s->len == @s->readpos).
-  *
-  * Returns -EFAULT if the copy to userspace fails.
-  */
--int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, size_t start, int cnt)
-+int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, int cnt)
- {
- 	int len;
- 	int ret;
-@@ -349,17 +348,20 @@
- 
- 	len = seq_buf_used(s);
- 
--	if (len <= start)
-+	if (len <= s->readpos)
- 		return -EBUSY;
- 
--	len -= start;
-+	len -= s->readpos;
- 	if (cnt > len)
- 		cnt = len;
--	ret = copy_to_user(ubuf, s->buffer + start, cnt);
-+	ret = copy_to_user(ubuf, s->buffer + s->readpos, cnt);
- 	if (ret == cnt)
- 		return -EFAULT;
- 
--	return cnt - ret;
-+	cnt -= ret;
-+
-+	s->readpos += cnt;
-+	return cnt;
- }
- 
- /**
-diff --git a/kernel/trace/trace_seq.c b/kernel/trace/trace_seq.c
---- a/kernel/trace/trace_seq.c
-+++ b/kernel/trace/trace_seq.c
-@@ -354,7 +354,7 @@
-  * @cnt: The amount to copy
-  *
-  * Copies the sequence buffer into the userspace memory pointed to
-- * by @ubuf. It starts from the last read position (@s->readpos)
-+ * by @ubuf. It starts from the last read position (@s->seq.readpos)
-  * and writes up to @cnt characters or till it reaches the end of
-  * the content in the buffer (@s->len), which ever comes first.
-  *
-@@ -363,18 +363,14 @@
-  *
-  * On failure it returns -EBUSY if all of the content in the
-  * sequence has been already read, which includes nothing in the
-- * sequence (@s->len == @s->readpos).
-+ * sequence (@s->len == @s->seq.readpos).
-  *
-  * Returns -EFAULT if the copy to userspace fails.
-  */
- int trace_seq_to_user(struct trace_seq *s, char __user *ubuf, int cnt)
- {
--	int ret;
--	__trace_seq_init(s);
--	ret = seq_buf_to_user(&s->seq, ubuf, s->readpos, cnt);
--	if (ret > 0)
--		s->readpos += ret;
--	return ret;
-+	__trace_seq_init(s);
-+	return seq_buf_to_user(&s->seq, ubuf, cnt);
- }
- EXPORT_SYMBOL_GPL(trace_seq_to_user);
- 
-diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
---- a/kernel/trace/trace.c
-+++ b/kernel/trace/trace.c
-@@ -1691,15 +1691,15 @@
- {
- 	int len;
- 
--	if (trace_seq_used(s) <= s->readpos)
-+	if (trace_seq_used(s) <= s->seq.readpos)
- 		return -EBUSY;
- 
--	len = trace_seq_used(s) - s->readpos;
-+	len = trace_seq_used(s) - s->seq.readpos;
- 	if (cnt > len)
- 		cnt = len;
--	memcpy(buf, s->buffer + s->readpos, cnt);
--
--	s->readpos += cnt;
-+	memcpy(buf, s->buffer + s->seq.readpos, cnt);
-+
-+	s->seq.readpos += cnt;
- 	return cnt;
- }
- 
-@@ -6894,7 +6894,7 @@
- 
- 	/* Now copy what we have to the user */
- 	sret = trace_seq_to_user(&iter->seq, ubuf, cnt);
--	if (iter->seq.readpos >= trace_seq_used(&iter->seq))
-+	if (iter->seq.seq.readpos >= trace_seq_used(&iter->seq))
- 		trace_seq_init(&iter->seq);
- 
- 	/*
-diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
---- a/include/net/cfg80211.h
-+++ b/include/net/cfg80211.h
-@@ -6098,7 +6098,7 @@
- 	enum ieee80211_bss_type conn_bss_type;
- 	u32 conn_owner_nlportid;
- 
--	struct wiphy_work disconnect_wk;
-+	struct work_struct disconnect_wk;
- 	u8 disconnect_bssid[ETH_ALEN];
- 
- 	struct list_head event_list;
-@@ -6139,7 +6139,7 @@
- 
- 	struct list_head pmsr_list;
- 	spinlock_t pmsr_lock;
--	struct wiphy_work pmsr_free_wk;
-+	struct work_struct pmsr_free_wk;
- 
- 	unsigned long unprot_beacon_reported;
- 
-diff --git a/net/wireless/core.h b/net/wireless/core.h
---- a/net/wireless/core.h
-+++ b/net/wireless/core.h
-@@ -421,7 +421,7 @@
- 				const u8 *td_bitmap, u8 td_bitmap_len);
- int cfg80211_mgd_wext_connect(struct cfg80211_registered_device *rdev,
- 			      struct wireless_dev *wdev);
--void cfg80211_autodisconnect_wk(struct wiphy *wiphy, struct wiphy_work *work);
-+void cfg80211_autodisconnect_wk(struct work_struct *work);
- 
- /* SME implementation */
- void cfg80211_conn_work(struct work_struct *work);
-@@ -571,7 +571,7 @@
- 
- void cfg80211_release_pmsr(struct wireless_dev *wdev, u32 portid);
- void cfg80211_pmsr_wdev_down(struct wireless_dev *wdev);
--void cfg80211_pmsr_free_wk(struct wiphy *wiphy, struct wiphy_work *work);
-+void cfg80211_pmsr_free_wk(struct work_struct *work);
- 
- void cfg80211_remove_link(struct wireless_dev *wdev, unsigned int link_id);
- void cfg80211_remove_links(struct wireless_dev *wdev);
-diff --git a/net/wireless/core.c b/net/wireless/core.c
---- a/net/wireless/core.c
-+++ b/net/wireless/core.c
-@@ -1234,7 +1234,7 @@
- 	ASSERT_RTNL();
- 	lockdep_assert_held(&rdev->wiphy.mtx);
- 
--	wiphy_work_flush(wdev->wiphy, &wdev->pmsr_free_wk);
-+	flush_work(&wdev->pmsr_free_wk);
- 
- 	nl80211_notify_iface(rdev, wdev, NL80211_CMD_DEL_INTERFACE);
- 
-@@ -1249,7 +1249,6 @@
- 	list_del_rcu(&wdev->list);
- 	synchronize_net();
- 	rdev->devlist_generation++;
--	wiphy_work_cancel(wdev->wiphy, &wdev->disconnect_wk);
- 
- 	cfg80211_mlme_purge_registrations(wdev);
- 
-@@ -1412,7 +1411,7 @@
- 	INIT_LIST_HEAD(&wdev->mgmt_registrations);
- 	INIT_LIST_HEAD(&wdev->pmsr_list);
- 	spin_lock_init(&wdev->pmsr_lock);
--	wiphy_work_init(&wdev->pmsr_free_wk, cfg80211_pmsr_free_wk);
-+	INIT_WORK(&wdev->pmsr_free_wk, cfg80211_pmsr_free_wk);
- 
- #ifdef CONFIG_CFG80211_WEXT
- 	wdev->wext.default_key = -1;
-@@ -1432,7 +1431,7 @@
- 	     wdev->iftype == NL80211_IFTYPE_ADHOC) && !wdev->use_4addr)
- 		wdev->netdev->priv_flags |= IFF_DONT_BRIDGE;
- 
--	wiphy_work_init(&wdev->disconnect_wk, cfg80211_autodisconnect_wk);
-+	INIT_WORK(&wdev->disconnect_wk, cfg80211_autodisconnect_wk);
- }
- 
- void cfg80211_register_wdev(struct cfg80211_registered_device *rdev,
-@@ -1540,9 +1539,9 @@
- 		wiphy_lock(&rdev->wiphy);
- 		cfg80211_leave(rdev, wdev);
- 		cfg80211_remove_links(wdev);
-+		wiphy_unlock(&rdev->wiphy);
- 		/* since we just did cfg80211_leave() nothing to do there */
--		wiphy_work_cancel(wdev->wiphy, &wdev->disconnect_wk);
--		wiphy_unlock(&rdev->wiphy);
-+		cancel_work_sync(&wdev->disconnect_wk);
- 		break;
- 	case NETDEV_DOWN:
- 		wiphy_lock(&rdev->wiphy);
-diff --git a/net/wireless/pmsr.c b/net/wireless/pmsr.c
---- a/net/wireless/pmsr.c
-+++ b/net/wireless/pmsr.c
-@@ -635,7 +635,7 @@
- 	}
- }
- 
--void cfg80211_pmsr_free_wk(struct wiphy *wiphy, struct wiphy_work *work)
-+void cfg80211_pmsr_free_wk(struct work_struct *work)
- {
- 	struct wireless_dev *wdev = container_of(work, struct wireless_dev,
- 						 pmsr_free_wk);
-@@ -657,7 +657,10 @@
- 	}
- 	spin_unlock_bh(&wdev->pmsr_lock);
- 
--	wiphy_work_cancel(wdev->wiphy, &wdev->pmsr_free_wk);
-+	/* Drop wdev->mtx around cancel_work_sync to avoid AB-BA deadlock with pmsr_free_wk. */
-+	wdev_unlock(wdev);
-+	cancel_work_sync(&wdev->pmsr_free_wk);
-+	wdev_lock(wdev);
- 	if (found)
- 		cfg80211_pmsr_process_abort(wdev);
- 
-@@ -672,7 +675,7 @@
- 	list_for_each_entry(req, &wdev->pmsr_list, list) {
- 		if (req->nl_portid == portid) {
- 			req->nl_portid = 0;
--			wiphy_work_queue(wdev->wiphy, &wdev->pmsr_free_wk);
-+			schedule_work(&wdev->pmsr_free_wk);
- 		}
- 	}
- 	spin_unlock_bh(&wdev->pmsr_lock);
-diff --git a/net/wireless/sme.c b/net/wireless/sme.c
---- a/net/wireless/sme.c
-+++ b/net/wireless/sme.c
-@@ -1578,12 +1578,13 @@
-  * Used to clean up after the connection / connection attempt owner socket
-  * disconnects
-  */
--void cfg80211_autodisconnect_wk(struct wiphy *wiphy, struct wiphy_work *work)
-+void cfg80211_autodisconnect_wk(struct work_struct *work)
- {
- 	struct wireless_dev *wdev =
- 		container_of(work, struct wireless_dev, disconnect_wk);
--	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
--
-+	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wdev->wiphy);
-+
-+	wiphy_lock(wdev->wiphy);
- 	wdev_lock(wdev);
- 
- 	if (wdev->conn_owner_nlportid) {
-@@ -1622,4 +1623,5 @@
- 	}
- 
- 	wdev_unlock(wdev);
--}
-+	wiphy_unlock(wdev->wiphy);
-+}
-diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
---- a/net/wireless/nl80211.c
-+++ b/net/wireless/nl80211.c
-@@ -19845,8 +19845,7 @@
- 				wdev->nl_owner_dead = true;
- 				schedule_work(&rdev->destroy_work);
- 			} else if (wdev->conn_owner_nlportid == notify->portid) {
--				wiphy_work_queue(wdev->wiphy,
--						 &wdev->disconnect_wk);
-+				schedule_work(&wdev->disconnect_wk);
- 			}
- 
- 			cfg80211_release_pmsr(wdev, notify->portid);
-diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
---- a/include/net/bluetooth/hci_core.h
-+++ b/include/net/bluetooth/hci_core.h
-@@ -61,7 +61,7 @@
- 		NAME_PENDING,
- 		NAME_KNOWN,
- 	} name_state;
--	unsigned long		timestamp;
-+	__u32			timestamp;
- 	struct inquiry_data	data;
- };
- 
-diff --git a/include/net/netns/mpls.h b/include/net/netns/mpls.h
---- a/include/net/netns/mpls.h
-+++ b/include/net/netns/mpls.h
-@@ -16,7 +16,9 @@
- 	int default_ttl;
- 	size_t platform_labels;
- 	struct mpls_route __rcu * __rcu *platform_label;
-+#ifndef __GENKSYMS__
- 	seqcount_t platform_label_seq;
-+#endif
- 
- 	struct ctl_table_header *ctl;
- };
-diff --git a/include/net/netns/xfrm.h b/include/net/netns/xfrm.h
---- a/include/net/netns/xfrm.h
-+++ b/include/net/netns/xfrm.h
-@@ -24,7 +24,9 @@
- struct xfrm_policy_hthresh {
- 	struct work_struct	work;
- 	seqlock_t		lock;
-+#ifndef __GENKSYMS__
- 	bool			work_disabled;
-+#endif
- 	u8			lbits4;
- 	u8			rbits4;
- 	u8			lbits6;
-diff --git a/include/linux/unicode.h b/include/linux/unicode.h
---- a/include/linux/unicode.h
-+++ b/include/linux/unicode.h
-@@ -51,7 +51,9 @@
- 	unsigned int version;
- 	const struct utf8data *ntab[UTF8_NMAX];
- 	const struct utf8data_table *tables;
-+#ifndef __GENKSYMS__
- 	struct rcu_head rcu;
-+#endif
- };
- 
- int utf8_validate(const struct unicode_map *um, const struct qstr *str);
-diff --git a/include/net/dropreason.h b/include/net/dropreason.h
---- a/include/net/dropreason.h
-+++ b/include/net/dropreason.h
-@@ -299,8 +299,10 @@
- 	 * MTU)
- 	 */
- 	SKB_DROP_REASON_PKT_TOO_BIG,
-+#ifndef __GENKSYMS__
- 	/** @SKB_DROP_REASON_TC_CHAIN_NOTFOUND: tc chain lookup failed. */
- 	SKB_DROP_REASON_TC_CHAIN_NOTFOUND,
-+#endif
- 	/**
- 	 * @SKB_DROP_REASON_MAX: the maximum of drop reason, which shouldn't be
- 	 * used as a real 'reason'
-diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
---- a/include/linux/mm_types.h
-+++ b/include/linux/mm_types.h
-@@ -565,7 +565,7 @@
- #else
- struct mm_struct_abi_extend {
- 	struct task_dma_buf_info *dmabuf_info;
--#ifdef CONFIG_FUTEX
-+#if defined(CONFIG_FUTEX) && !defined(__GENKSYMS__)
- 	atomic64_t futex_unique_id;
- #endif
- };
-diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
---- a/include/linux/sched/task.h
-+++ b/include/linux/sched/task.h
-@@ -38,7 +38,9 @@
- 	void *fn_arg;
- 	struct cgroup *cgrp;
- 	struct css_set *cset;
-+#ifndef __GENKSYMS__
- 	unsigned int kill_seq;
-+#endif
- };
- 
- /*
-diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
---- a/kernel/sched/sched.h
-+++ b/kernel/sched/sched.h
-@@ -1177,7 +1177,9 @@
- 	unsigned int		core_forceidle_seq;
- 	unsigned int		core_forceidle_occupation;
- 	u64			core_forceidle_start;
-+#ifndef __GENKSYMS__
- 	unsigned int		core_pick_in_flight;
-+#endif
- #endif
- 
- 	ANDROID_VENDOR_DATA_ARRAY(1, 1);
-diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
---- a/include/net/sch_generic.h
-+++ b/include/net/sch_generic.h
-@@ -118,7 +118,9 @@
- 	struct qdisc_skb_head	q;
- 	struct gnet_stats_basic_sync bstats;
- 	struct gnet_stats_queue	qstats;
-+#ifndef __GENKSYMS__
- 	int                     owner;
-+#endif
- 	unsigned long		state;
- 	unsigned long		state2; /* must be written under qdisc spinlock */
- 	struct Qdisc            *next_sched;
-@@ -383,10 +385,12 @@
- 						struct nlattr **tca,
- 						struct netlink_ext_ack *extack);
- 	void			(*tmplt_destroy)(void *tmplt_priv);
-+#ifndef __GENKSYMS__
- 	void			(*tmplt_reoffload)(struct tcf_chain *chain,
- 						   bool add,
- 						   flow_setup_cb_t *cb,
- 						   void *cb_priv);
-+#endif
- 
- 	/* rtnetlink specific */
- 	int			(*dump)(struct net*, struct tcf_proto*, void *,
-@@ -433,8 +437,10 @@
- 	 */
- 	spinlock_t		lock;
- 	bool			deleting;
-+#ifndef __GENKSYMS__
- 	bool			counted;
- 	bool			usesw;
-+#endif
- 	refcount_t		refcnt;
- 	struct rcu_head		rcu;
- 	struct hlist_node	destroy_ht_node;
-@@ -483,7 +489,9 @@
- 	struct flow_block flow_block;
- 	struct list_head owner_list;
- 	bool keep_dst;
-+#ifndef __GENKSYMS__
- 	atomic_t useswcnt;
-+#endif
- 	atomic_t offloadcnt; /* Number of oddloaded filters */
- 	unsigned int nooffloaddevcnt; /* Number of devs unable to do offload */
- 	unsigned int lockeddevcnt; /* Number of devs that require rtnl lock. */
-diff --git a/include/net/sock.h b/include/net/sock.h
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -465,10 +465,14 @@
- 	__u32			sk_dst_pending_confirm;
- 	u32			sk_pacing_status; /* see enum sk_pacing */
- 	long			sk_sndtimeo;
+ 	struct snd_usb_packet_info {
 +#ifdef __GENKSYMS__
-+	struct timer_list	sk_timer;
++		uint32_t packet_size[MAX_PACKS_HS];
 +#else
- 	union {
- 		struct timer_list sk_timer;
- 		struct timer_list mptcp_retransmit_timer;
- 	};
+ 		int packet_size[MAX_PACKS_HS];
 +#endif
- 	__u32			sk_priority;
- 	__u32			sk_mark;
- 	unsigned long		sk_pacing_rate; /* bytes per second */
-diff --git a/include/net/inet_connection_sock.h b/include/net/inet_connection_sock.h
---- a/include/net/inet_connection_sock.h
-+++ b/include/net/inet_connection_sock.h
-@@ -97,10 +97,12 @@
- 	unsigned long		  icsk_timeout;
- 	struct timer_list	  icsk_retransmit_timer;
- 	struct timer_list	  icsk_delack_timer;
+ 		int packets;
+ 	} next_packet[MAX_URBS];
+ 	unsigned int next_packet_head;	/* ring buffer offset to read */
+@@ -117,7 +121,9 @@
+ 	unsigned int phase;		/* phase accumulator */
+ 	unsigned int maxpacksize;	/* max packet size in bytes */
+ 	unsigned int maxframesize;      /* max packet size in frames */
 +#ifndef __GENKSYMS__
- 	union {
- 		struct timer_list icsk_keepalive_timer;
- 		struct timer_list mptcp_tout_timer;
- 	};
+ 	unsigned int max_urb_packs;	/* packets allocated per data URB */
 +#endif
- 	__u32			  icsk_rto;
- 	__u32                     icsk_rto_min;
- 	__u32                     icsk_delack_max;
-diff --git a/block/blk-cgroup.h b/block/blk-cgroup.h
---- a/block/blk-cgroup.h
-+++ b/block/blk-cgroup.h
-@@ -125,9 +125,11 @@
- 	/* the blkg and policy id this per-policy data belongs to */
- 	struct blkcg_gq			*blkg;
- 	int				plid;
-+#ifndef __GENKSYMS__
- 	bool				online;
- 
- 	struct rcu_head			rcu_head;
-+#endif
- };
- 
- /*
-diff --git a/block/bfq-iosched.h b/block/bfq-iosched.h
---- a/block/bfq-iosched.h
-+++ b/block/bfq-iosched.h
-@@ -953,7 +953,11 @@
- 	char blkg_path[128];
- 
- 	/* reference counter (see comments in bfq_bic_update_cgroup) */
-+#ifdef __GENKSYMS__
-+	int ref;
-+#else
- 	atomic_t ref;
-+#endif
- 	/* Is bfq_group still online? */
- 	bool online;
- 
-diff --git a/include/linux/bpf.h b/include/linux/bpf.h
---- a/include/linux/bpf.h
-+++ b/include/linux/bpf.h
-@@ -1185,9 +1185,11 @@
- 	bool sleepable;
- 	bool tail_call_reachable;
- 	bool xdp_has_frags;
-+#ifndef __GENKSYMS__
- 	bool is_extended; /* true if extended by freplace program */
- 	u64 prog_array_member_cnt; /* counts how many times as member of prog_array */
- 	struct mutex ext_mutex; /* mutex for is_extended and prog_array_member_cnt */
-+#endif
- 	/* BTF_KIND_FUNC_PROTO for valid attach_btf_id */
- 	const struct btf_type *attach_func_proto;
- 	/* function name for valid attach_btf_id */
-@@ -1297,6 +1299,9 @@
- 	enum bpf_link_type type;
- 	const struct bpf_link_ops *ops;
- 	struct bpf_prog *prog;
-+#ifdef __GENKSYMS__
-+	struct work_struct work;
-+#else
- 	/* rcu is used before freeing, work can be used to schedule that
- 	 * RCU-based freeing before that, so they never overlap
- 	 */
-@@ -1304,6 +1309,7 @@
- 		struct rcu_head rcu;
- 		struct work_struct work;
- 	};
-+#endif
- };
- 
- struct bpf_link_ops {
-@@ -1312,11 +1318,13 @@
- 	 * waiting
- 	 */
- 	void (*dealloc)(struct bpf_link *link);
-+#ifndef __GENKSYMS__
- 	/* deallocate link resources callback, called after RCU grace period;
- 	 * if underlying BPF program is sleepable we go through tasks trace
- 	 * RCU GP and then "classic" RCU GP
- 	 */
- 	void (*dealloc_deferred)(struct bpf_link *link);
-+#endif
- 	int (*detach)(struct bpf_link *link);
- 	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
- 			   struct bpf_prog *old_prog);
-diff --git a/include/linux/device-mapper.h b/include/linux/device-mapper.h
---- a/include/linux/device-mapper.h
-+++ b/include/linux/device-mapper.h
-@@ -361,10 +361,12 @@
- 	 */
- 	bool discards_supported:1;
- 
-+#ifndef __GENKSYMS__
- 	/*
- 	 * Set if this target requires stable data during writeback.
- 	 */
- 	bool needs_stable_writes:1;
-+#endif
- 
- 	/*
- 	 * Set if we need to limit the number of in-flight bios when swapping.
-diff --git a/include/linux/pci.h b/include/linux/pci.h
---- a/include/linux/pci.h
-+++ b/include/linux/pci.h
-@@ -80,8 +80,12 @@
- 	struct pci_bus		*bus;		/* Bus this slot is on */
- 	struct list_head	list;		/* Node in list of slots */
- 	struct hotplug_slot	*hotplug;	/* Hotplug info (move here) */
-+#ifdef __GENKSYMS__
-+	unsigned char		number;		/* PCI_SLOT(pci_dev->devfn) */
-+#else
- 	u16			number;		/* PCI_SLOT(pci_dev->devfn) or PCI_SLOT_PLACEHOLDER */
- 	unsigned int		per_func_slot:1; /* Allow per function slot */
-+#endif
- 	struct kobject		kobj;
- };
- 
-diff --git a/include/linux/i3c/master.h b/include/linux/i3c/master.h
---- a/include/linux/i3c/master.h
-+++ b/include/linux/i3c/master.h
-@@ -231,7 +231,9 @@
- 	struct device dev;
- 	struct i3c_dev_desc *desc;
- 	struct i3c_bus *bus;
-+#ifndef __GENKSYMS__
- 	struct list_head node;
-+#endif
- };
- 
- /*
-diff --git a/include/linux/mtd/mtd.h b/include/linux/mtd/mtd.h
---- a/include/linux/mtd/mtd.h
-+++ b/include/linux/mtd/mtd.h
-@@ -379,7 +379,11 @@
- 
- 	struct module *owner;
- 	struct device dev;
-+#ifdef __GENKSYMS__
-+	int usecount;
-+#else
- 	struct kref refcnt;
-+#endif
- 	struct mtd_debug_info dbg;
- 	struct nvmem_device *nvmem;
- 	struct nvmem_device *otp_user_nvmem;
-diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
---- a/drivers/usb/dwc3/core.h
-+++ b/drivers/usb/dwc3/core.h
-@@ -1165,7 +1165,9 @@
-  */
- struct dwc3 {
- 	struct work_struct	drd_work;
-+#ifndef __GENKSYMS__
- 	struct work_struct	err_recovery_work;
-+#endif
- 	struct dwc3_trb		*ep0_trb;
- 	void			*bounce;
- 	void			*scratchbuf;
-@@ -1182,8 +1184,10 @@
- 	/* mode switching lock */
- 	struct mutex		mutex;
- 
-+#ifndef __GENKSYMS__
- 	/* serializes pull-up run/stop vs error recovery */
- 	struct mutex		connect_mutex;
-+#endif
- 
- 	struct device		*dev;
- 	struct device		*sysdev;
-@@ -1227,8 +1231,10 @@
- 	enum usb_dr_mode	role_switch_default_mode;
- 
- 	struct power_supply	*usb_psy;
-+#ifndef __GENKSYMS__
- 	struct work_struct	vbus_draw_work;
- 	unsigned int		current_limit;
-+#endif
- 
- 	u32			fladj;
- 	u32			ref_clk_per;
-@@ -1303,9 +1309,11 @@
- 	enum dwc3_ep0_next	ep0_next_event;
- 	enum dwc3_ep0_state	ep0state;
- 	enum dwc3_link_state	link_state;
-+#ifndef __GENKSYMS__
- 	enum dwc3_err_state	err_state;
- 
- 	u32			err_recovery_count;
-+#endif
- 
- 	u16			u2sel;
- 	u16			u2pel;
-diff --git a/drivers/firmware/arm_scmi/driver.c b/drivers/firmware/arm_scmi/driver.c
---- a/drivers/firmware/arm_scmi/driver.c
-+++ b/drivers/firmware/arm_scmi/driver.c
-@@ -187,7 +187,7 @@
- 		module_put(proto->owner);
- }
- 
--int scmi_protocol_register(const struct scmi_protocol *proto)
-+int __scmi_protocol_register(const struct scmi_protocol *proto)
- {
- 	int ret;
- 
-@@ -215,9 +215,8 @@
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(scmi_protocol_register);
--
--void scmi_protocol_unregister(const struct scmi_protocol *proto)
-+
-+void __scmi_protocol_unregister(const struct scmi_protocol *proto)
- {
- 	spin_lock(&protocol_lock);
- 	idr_remove(&scmi_protocols, proto->id);
-@@ -225,7 +224,6 @@
- 
- 	pr_debug("Unregistered SCMI Protocol 0x%x\n", proto->id);
- }
--EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
- 
- /**
-  * scmi_create_protocol_devices  - Create devices for all pending requests for
-diff --git a/drivers/firmware/arm_scmi/common.h b/drivers/firmware/arm_scmi/common.h
---- a/drivers/firmware/arm_scmi/common.h
-+++ b/drivers/firmware/arm_scmi/common.h
-@@ -136,6 +136,8 @@
- 
- struct scmi_revision_info *
- scmi_revision_area_get(const struct scmi_protocol_handle *ph);
-+int __scmi_protocol_register(const struct scmi_protocol *proto);
-+void __scmi_protocol_unregister(const struct scmi_protocol *proto);
- void scmi_setup_protocol_implemented(const struct scmi_protocol_handle *ph,
- 				     u8 *prot_imp);
- 
-diff --git a/drivers/firmware/arm_scmi/bus.c b/drivers/firmware/arm_scmi/bus.c
---- a/drivers/firmware/arm_scmi/bus.c
-+++ b/drivers/firmware/arm_scmi/bus.c
-@@ -503,6 +503,18 @@
- }
- EXPORT_SYMBOL_GPL(scmi_device_destroy);
- 
-+int scmi_protocol_register(const struct scmi_protocol *proto)
-+{
-+	return __scmi_protocol_register(proto);
-+}
-+EXPORT_SYMBOL_GPL(scmi_protocol_register);
-+
-+void scmi_protocol_unregister(const struct scmi_protocol *proto)
-+{
-+	__scmi_protocol_unregister(proto);
-+}
-+EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
-+
- static int __scmi_devices_unregister(struct device *dev, void *data)
- {
- 	struct scmi_device *scmi_dev = to_scmi_dev(dev);
+ 	unsigned int max_urb_frames;	/* max URB size in frames */
+ 	unsigned int curpacksize;	/* current packet size in bytes (for capture) */
+ 	unsigned int curframesize;      /* current packet size in frames (for capture) */
