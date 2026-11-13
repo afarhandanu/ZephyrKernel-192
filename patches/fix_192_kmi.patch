@@ -964,32 +964,6 @@ diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
  	atomic_t offloadcnt; /* Number of oddloaded filters */
  	unsigned int nooffloaddevcnt; /* Number of devs unable to do offload */
  	unsigned int lockeddevcnt; /* Number of devs that require rtnl lock. */
-diff --git a/include/net/secure_seq.h b/include/net/secure_seq.h
---- a/include/net/secure_seq.h
-+++ b/include/net/secure_seq.h
-@@ -38,16 +38,12 @@
- 			    const __be32 *daddr,
- 			    __be16 sport, __be16 dport);
- 
--static inline u32 secure_tcpv6_seq(const __be32 *saddr, const __be32 *daddr,
--				   __be16 sport, __be16 dport)
--{
--	union tcp_seq_and_ts_off ts;
--
--	ts = secure_tcpv6_seq_and_ts_off(&init_net, saddr, daddr,
--					 sport, dport);
--
--	return ts.seq;
--}
-+u32 secure_tcp_seq(__be32 saddr, __be32 daddr,
-+		   __be16 sport, __be16 dport);
-+u32 secure_tcpv6_seq(const __be32 *saddr, const __be32 *daddr,
-+		     __be16 sport, __be16 dport);
-+u32 secure_tcpv6_ts_off(const struct net *net,
-+			const __be32 *saddr, const __be32 *daddr);
- 
- u64 secure_dccp_sequence_number(__be32 saddr, __be32 daddr,
- 				__be16 sport, __be16 dport);
 diff --git a/include/net/sock.h b/include/net/sock.h
 --- a/include/net/sock.h
 +++ b/include/net/sock.h
@@ -1202,44 +1176,6 @@ diff --git a/lib/seq_buf.c b/lib/seq_buf.c
  }
  
  /**
-diff --git a/net/core/secure_seq.c b/net/core/secure_seq.c
---- a/net/core/secure_seq.c
-+++ b/net/core/secure_seq.c
-@@ -77,6 +77,20 @@
- }
- EXPORT_SYMBOL(secure_tcpv6_seq_and_ts_off);
- 
-+u32 secure_tcpv6_seq(const __be32 *saddr, const __be32 *daddr, __be16 sport, __be16 dport)
-+{
-+	union tcp_seq_and_ts_off ts = secure_tcpv6_seq_and_ts_off(&init_net, saddr, daddr, sport, dport);
-+	return ts.seq;
-+}
-+EXPORT_SYMBOL(secure_tcpv6_seq);
-+
-+u32 secure_tcpv6_ts_off(const struct net *net, const __be32 *saddr, const __be32 *daddr)
-+{
-+	union tcp_seq_and_ts_off ts = secure_tcpv6_seq_and_ts_off(net, saddr, daddr, 0, 0);
-+	return ts.ts_off;
-+}
-+EXPORT_SYMBOL(secure_tcpv6_ts_off);
-+
- u64 secure_ipv6_port_ephemeral(const __be32 *saddr, const __be32 *daddr,
- 			       __be16 dport)
- {
-@@ -123,6 +137,13 @@
- 	return st;
- }
- EXPORT_SYMBOL_GPL(secure_tcp_seq_and_ts_off);
-+
-+u32 secure_tcp_seq(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport)
-+{
-+	union tcp_seq_and_ts_off ts = secure_tcp_seq_and_ts_off(&init_net, saddr, daddr, sport, dport);
-+	return ts.seq;
-+}
-+EXPORT_SYMBOL(secure_tcp_seq);
- 
- u64 secure_ipv4_port_ephemeral(__be32 saddr, __be32 daddr, __be16 dport)
- {
 diff --git a/net/ipv4/netfilter/iptable_nat.c b/net/ipv4/netfilter/iptable_nat.c
 --- a/net/ipv4/netfilter/iptable_nat.c
 +++ b/net/ipv4/netfilter/iptable_nat.c
