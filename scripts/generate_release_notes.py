@@ -37,7 +37,7 @@ def get_susfs_version() -> str:
 def main():
     ltos = os.environ.get("BUILD_LTOS", "thin")
     variants = os.environ.get("BUILD_VARIANTS", "finasu")
-    kernel_ver = os.environ.get("KERNEL_VER", "6.1.190")
+    kernel_ver = os.environ.get("KERNEL_VER", "6.1.192")
     susfs_ver = get_susfs_version()
     is_append = "--append" in sys.argv or os.environ.get("APPEND_RELEASE_NOTES") == "1"
 
@@ -46,9 +46,9 @@ def main():
 
 ## 📖 Detailed Changelog & System Architecture
 
-### 🛡️ Linux 6.1.190 LTS Upstream Sync & Security CVE Backports (SAGA Architecture Aligned)
+### 🛡️ Linux 6.1.192 LTS Upstream Sync & Security CVE Backports (SAGA 190 -> 6.1.192)
 
-- **Upstream Linux {kernel_ver} LTS Base:** Full merge and clean ancestry integration with official Linux {kernel_ver} LTS stable release (upgraded from 6.1.187 to 6.1.190 via verified SAGA architecture with timer/fwnode compat shims).
+- **Upstream Linux {kernel_ver} LTS Base:** Full merge and integration with official Linux {kernel_ver} LTS stable release (upstreamed 1,885 commits from 6.1.190 to 6.1.192 with timer compat shims, restored `__skb_get_hash` / `__tty_port_tty_hangup` exports, and KABI struct preservation).
 - **Pinctrl / Pinmux Race Fix (`8434dec94`):** Fixed race condition causing `mux_owner` to become NULL while `mux_usecount` is actively incremented.
 - **Block Layer Tag Leak Fix (`26d495f0f6`):** Resolved memory leak in `blk_mq_realloc_tag_set_tags()` where request tags remained allocated when shrinking `nr_hw_queues`.
 - **F2FS Checkpoint Sysfs Fix (`8b927ad2d1`):** Converted checkpoint thread priority reading to modern `IOPRIO_PRIO_LEVEL` macro for sysfs exports.

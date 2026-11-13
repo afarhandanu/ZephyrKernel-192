@@ -48,7 +48,7 @@ def load_metas(stage_dir: str) -> list:
                 "variant": var_key,
                 "variant_version": v_disp,
                 "susfs_version": "v2.4.0" if is_susfs else "",
-                "linux_ver": "6.1.187",
+                "linux_ver": "6.1.192",
                 "kernel_version": "6.1",
                 "kernel_branch": "main",
                 "kernel_source_owner": "afarhandanu",

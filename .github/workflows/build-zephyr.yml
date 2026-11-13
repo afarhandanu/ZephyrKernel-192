@@ -1,8 +1,18 @@
-name: Build ZephyrKernel (GKI 6.1.190)
+name: Build ZephyrKernel (GKI 6.1.192)
 
 on:
   workflow_dispatch:
     inputs:
+      kernel_repo:
+        description: "Kernel 6.1.192 source repository URL (push zk61-192 ke repo baru dulu)"
+        type: string
+        required: true
+        default: "https://github.com/afarhandanu/zk61-192.git"
+      kernel_branch:
+        description: "Kernel 6.1.192 source branch"
+        type: string
+        required: true
+        default: "zephyr-6.1.192"
       root_variant:
         description: "Root Variant (all = Parallel Matrix Build semua varian, atau pilih 1 varian)"
         type: choice
@@ -99,21 +109,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: zephyr-ccache-6.1.190-${{ matrix.lto }}-${{ matrix.variant }}-${{ github.run_id }}
+          key: zephyr-ccache-6.1.192-${{ matrix.lto }}-${{ matrix.variant }}-${{ github.run_id }}
           restore-keys: |
-            zephyr-ccache-6.1.190-${{ matrix.lto }}-${{ matrix.variant }}-
-            zephyr-ccache-6.1.190-${{ matrix.lto }}-
-            zephyr-ccache-6.1.190-
+            zephyr-ccache-6.1.192-${{ matrix.lto }}-${{ matrix.variant }}-
+            zephyr-ccache-6.1.192-${{ matrix.lto }}-
+            zephyr-ccache-6.1.192-
       - name: Configure ccache
         run: |
           ccache -M 5G
           ccache -o compression=true
           ccache -z
-      - name: Clone SAGA Kernel 6.1.190 Source Tree
+      - name: Clone Kernel 6.1.192 Source Tree
         run: |
           rm -rf kernel
-          echo "Cloning SAGA Kernel 6.1.190 base (branch: upgrade-190-v2)..."
-          git clone --depth=1 -b upgrade-190-v2 https://github.com/Andrews571/SAGA-Kernel-6.1.git kernel
+          echo "Cloning Kernel 6.1.192 tree (${{ inputs.kernel_repo }} @ ${{ inputs.kernel_branch }})..."
+          git clone --depth=1 -b "${{ inputs.kernel_branch }}" "${{ inputs.kernel_repo }}" kernel
           echo "Applying ZRAM/Binder swapops unlocked migration page panic fix..."
           sed -i 's/BUG_ON(!PageLocked(p));/WARN_ON_ONCE(!PageLocked(p));/' kernel/include/linux/swapops.h
           grep -q "WARN_ON_ONCE(!PageLocked(p));" kernel/include/linux/swapops.h
@@ -457,9 +467,9 @@ jobs:
           cp kernel/out/arch/arm64/boot/Image anykernel/Image
 
           SUSFS_VER=$(grep "#define SUSFS_VERSION" kernel/include/linux/susfs.h 2>/dev/null | head -1 | cut -d'"' -f2 || echo "v2.4.0")
-          KVER=$(make -s -C kernel kernelversion 2>/dev/null || echo "6.1.190")
-          sed -i "s/GKI 6.1.190/GKI ${KVER}/g" anykernel/banner
-          sed -i "s/GKI 6.1.190/GKI ${KVER}/g" anykernel/anykernel.sh
+          KVER=$(make -s -C kernel kernelversion 2>/dev/null || echo "6.1.192")
+          sed -i "s/GKI 6.1.[0-9]\+/GKI ${KVER}/g" anykernel/banner
+          sed -i "s/GKI 6.1.[0-9]\+/GKI ${KVER}/g" anykernel/anykernel.sh
           if [ "${{ matrix.variant }}" = "vanilla" ]; then
             sed -i "s/FinaSU & SUSFS/Vanilla (Non-Root)/" anykernel/banner
           else
@@ -469,7 +479,7 @@ jobs:
           
           cd anykernel
           BUILD_DATE="${{ needs.setup-matrix.outputs.build_date }}"
-          KVER=$(make -s -C ../kernel kernelversion 2>/dev/null || echo "6.1.190")
+          KVER=$(make -s -C ../kernel kernelversion 2>/dev/null || echo "6.1.192")
           ZIP_NAME="Zephyr-GKI-${KVER}-${{ matrix.variant }}-${{ matrix.lto }}LTO-${BUILD_DATE}.zip"
           zip -r9 "../${ZIP_NAME}" * -x .git README.md *placeholder
           echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
@@ -506,14 +516,14 @@ jobs:
           fi
           BUILD_DATE="${{ needs.setup-matrix.outputs.build_date }}"
           TAG="v6.1-${BUILD_DATE}-${{ inputs.root_variant }}-${{ inputs.lto_mode }}LTO"
-          TITLE="⚡ ZephyrKernel GKI 6.1.190 (Variants: ${{ inputs.root_variant }} | LTO: ${{ inputs.lto_mode }} | ${BUILD_DATE})"
+          TITLE="⚡ ZephyrKernel GKI 6.1.192 (Variants: ${{ inputs.root_variant }} | LTO: ${{ inputs.lto_mode }} | ${BUILD_DATE})"
           SUSFS_VER=$(curl -fsSL --max-time 5 "https://gitlab.com/simonpunk/susfs4ksu/-/raw/gki-android14-6.1/kernel_patches/include/linux/susfs.h" 2>/dev/null | grep "#define SUSFS_VERSION" | head -1 | cut -d'"' -f2 || echo "v2.4.0")
           {
-            echo "## ⚡ ZephyrKernel GKI 2.0 — \`android14-11-Zephyr\` (Linux 6.1.190 LTS)"
+            echo "## ⚡ ZephyrKernel GKI 2.0 — \`android14-11-Zephyr\` (Linux 6.1.192 LTS)"
             echo ""
             echo "| Property | Value |"
             echo "| :--- | :--- |"
-            echo "| **Branding** | \`6.1.190-android14-11-Zephyr\` |"
+            echo "| **Branding** | \`6.1.192-android14-11-Zephyr\` |"
             echo "| **Builder** | \`kucingbalap1644@ZephyrCI\` |"
             echo "| **Toolchain** | \`Neutron Clang 24.0.0git + LLD 24.0.0 (ccache enabled)\` |"
             echo "| **LTO Modes Built** | \`${{ needs.setup-matrix.outputs.ltos }}\` |"
@@ -533,7 +543,7 @@ jobs:
 
           BUILD_LTOS="${{ needs.setup-matrix.outputs.ltos }}" \
           BUILD_VARIANTS="${{ needs.setup-matrix.outputs.variants }}" \
-          KERNEL_VER="6.1.190" \
+          KERNEL_VER="6.1.192" \
           python3 scripts/generate_release_notes.py --append
 
           gh release create "$TAG" release_assets/*.zip \
@@ -546,7 +556,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/v6.1-${{ needs.setup-matrix.outputs.build_date }}-${{ inputs.root_variant }}-${{ inputs.lto_mode }}LTO
-          KERNEL_VER: "6.1.190"
+          KERNEL_VER: "6.1.192"
           LTO_MODE: ${{ inputs.lto_mode }}
           VARIANTS: ${{ inputs.root_variant }}
         run: |

@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 6.1.190 Kernel Configuration
+# Linux/arm64 6.1.192 Kernel Configuration
 #
 CONFIG_CC_VERSION_TEXT="Neutron clang version 24.0.0git (https://github.com/llvm/llvm-project.git f42c87ba2c70219b1f4ad1f031a5b6a1ea6603fb)"
 CONFIG_GCC_VERSION=0

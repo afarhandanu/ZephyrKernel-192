@@ -5,7 +5,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=ZephyrKernel (Universal Android 14 GKI 6.1.190)
+kernel.string=ZephyrKernel (Universal Android 14 GKI 6.1.192)
 do.devicecheck=0
 do.modules=0
 do.systemless=0
@@ -48,7 +48,7 @@ if [ -f "$IMAGE_FILE" ]; then
     native_kver=$(strings "$IMAGE_FILE" 2>/dev/null | grep -m1 "Linux version " | awk '{print $3}')
     [ -z "$native_kver" ] && native_kver=$(tools/busybox strings "$IMAGE_FILE" 2>/dev/null | grep -m1 "Linux version " | awk '{print $3}')
 fi
-[ -z "$native_kver" ] && native_kver="6.1.190-android14-11-Zephyr"
+[ -z "$native_kver" ] && native_kver="6.1.192-android14-11-Zephyr"
 
 # Device GKI check (read from running system)
 running_kver=$(cat /proc/version 2>/dev/null | awk -F '-' '{print $1}' | awk '{print $3}')

@@ -1,15 +1,15 @@
 ================================================================================
-                    ⚡ ZEPHYR KERNEL GKI 2.0 (LINUX 6.1.190 LTS) ⚡
+                    ⚡ ZEPHYR KERNEL GKI 2.0 (LINUX 6.1.192 LTS) ⚡
                       COMPLETE FEATURE MATRIX & AUDIT GUIDE
 ================================================================================
 
-Project: ZephyrKernel (GKI 2.0 Universal Android 14 6.1.190 LTS)
-Repository: https://github.com/afarhandanu/ZephyrKernel-test
-Base Kernel: Linux 6.1.190 LTS (Android Common Kernel android14-6.1)
+Project: ZephyrKernel (GKI 2.0 Universal Android 14 6.1.192 LTS)
+Repository: https://github.com/afarhandanu/ZephyrKernel-192
+Base Kernel: Linux 6.1.192 LTS (Android Common Kernel android14-6.1)
 Target Platform: MediaTek Dimensity 7300-Ultra (MT6878) & Universal GKI 2.0
 Tested Device: Xiaomi POCO X7 / Redmi Note 14 Pro 5G (malachite)
 Compiler: Neutron Clang 24.0.0git + LLD 24.0.0 (ThinLTO / FullLTO / NoLTO)
-Release Version: v6.1.190 (KMI: android14-11-Zephyr)
+Release Version: v6.1.192 (KMI: android14-11-Zephyr)
 Build Date: November 2026
 
 ================================================================================
@@ -29,15 +29,14 @@ TABLE OF CONTENTS
 ================================================================================
 1. CPU, SCHEDULER & FREQUENCY SCALING
 ================================================================================
-[*] Linux 6.1.190 LTS Stable Core:
-    - 100% genuine upstream Linux 6.1.190 LTS synced directly with Linux Stable Foundation
-    - Includes 519 upstream commits from 6.1.187 -> 6.1.190
-    - Full ACK & MediaTek MT6878 compatibility with SAGA architecture shims:
-      - timer_delete_sync() compat shim in include/linux/timer.h
+[*] Linux 6.1.192 LTS Stable Core:
+    - 100% genuine upstream Linux 6.1.192 LTS synced directly with Linux Stable Foundation
+    - Includes 1,885 upstream commits from 6.1.190 -> 6.1.192
+    - Full ACK & MediaTek MT6878 compatibility with SAGA architecture & KMI shims:
+      - timer_delete_sync() / timer_delete() / timer_shutdown() / timer_shutdown_sync() compat shims in include/linux/timer.h
       - DEFINE_FREE(fwnode_handle) compat shim in include/linux/property.h
-      - RCU memory release kfree_rcu(..., rcu) in net/ipv4/af_inet.c
-    - KMI reserve slots preserved (deliberately skipped FUT_OFF_MMSHARED to prevent
-      MediaTek vendor driver ABI mismatches).
+      - Restored __skb_get_hash and __tty_port_tty_hangup GKI/MTK exported symbols
+      - KMI struct layouts preserved via ANDROID_KABI_USE/abi_extend (net_device, sock, mm_struct, Scsi_Host, request_queue, tty_struct, hci_conn, user_struct, key_type)
 
 [*] BORE CPU Scheduler (Burst-Oriented Response Enhancer v6.8.0-rc1):
     - Config: CONFIG_SCHED_BORE=y
@@ -285,7 +284,7 @@ Run the following commands via 'adb shell su' to verify all features on your pho
 
 # 1. Kernel Version & Upstream Sync
 uname -a
-# Expected: Linux localhost 6.1.190-android14-11-Zephyr ...
+# Expected: Linux localhost 6.1.192-android14-11-Zephyr ...
 
 # 2. BORE Scheduler
 cat /proc/sys/kernel/sched_bore
@@ -331,21 +330,10 @@ lsmod | grep -E "wlan|bt_drv|conninfra|sapu"
 10. DOWNLOADABLE RELEASES & REMOTE ACCESS
 ================================================================================
 GitHub Repository:
-https://github.com/afarhandanu/ZephyrKernel-test
-
-Latest GitHub Releases (AnyKernel3 Flashable ZIPs):
-1. SukiSU Release (All LTO Modes):
-   https://github.com/afarhandanu/ZephyrKernel-test/releases/tag/v6.1-20261112_0152-sukisu-allLTO
-   - Zephyr-GKI-6.1.190-sukisu-thinLTO-20261112_0152.zip
-   - Zephyr-GKI-6.1.190-sukisu-fullLTO-20261112_0152.zip
-   - Zephyr-GKI-6.1.190-sukisu-noneLTO-20261112_0152.zip
-
-2. FinASU Release (ThinLTO - Tested & Working on POCO X7):
-   https://github.com/afarhandanu/ZephyrKernel-test/releases/tag/v6.1-20261112_0021-finasu-thinLTO
-   - Zephyr-GKI-6.1.190-finasu-thinLTO-20261112_0021.zip
+https://github.com/afarhandanu/ZephyrKernel-192
 
 Direct Raw Download URL for this Feature Matrix:
-https://raw.githubusercontent.com/afarhandanu/ZephyrKernel-test/main/ZEPHYR_FEATURES_6.1.190.txt
+https://raw.githubusercontent.com/afarhandanu/ZephyrKernel-192/main/ZEPHYR_FEATURES_6.1.192.txt
 
 ================================================================================
 ⚡ ZephyrKernel — Precision Engineered for Performance and Reliability ⚡

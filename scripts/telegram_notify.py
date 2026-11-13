@@ -10,7 +10,7 @@ import subprocess
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 RELEASE_URL = os.environ.get("RELEASE_URL", "https://github.com/afarhandanu/ZephyrKernel/releases")
-KERNEL_VER = os.environ.get("KERNEL_VER", "6.1.190")
+KERNEL_VER = os.environ.get("KERNEL_VER", "6.1.192")
 LTO_MODE = os.environ.get("LTO_MODE", "thin")
 
 if not BOT_TOKEN or not CHAT_ID:
@@ -156,9 +156,9 @@ rich_markdown = f"""<tg-slideshow>
 <summary><tg-button type="disabled" style="primary">Changelog & Backports</tg-button></summary>
 
 <details>
-<summary>Upstream 6.1.190 LTS & CVE Backports</summary>
+<summary>Upstream 6.1.192 LTS & CVE Backports</summary>
 
-- Linux LTS: Synced cleanly to upstream Linux 6.1.190 LTS (SAGA stable MTK architecture with timer/fwnode shims)
+- Linux LTS: Synced to upstream Linux 6.1.192 LTS (1,885 commits from 6.1.190 with timer shims, restored GKI exports & KABI struct preservation)
 - Pinmux (8434dec94): Fix race causing mux_owner NULL with active mux_usecount
 - Block blk-mq (26d495f0f6): Fix tag memory leak when shrinking nr_hw_queues
 - F2FS Sysfs (8b927ad2d1): Use modern IOPRIO_PRIO_LEVEL macro for checkpoint sysfs
