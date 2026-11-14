@@ -1,520 +1,3117 @@
-diff --git a/block/bfq-iosched.h b/block/bfq-iosched.h
---- a/block/bfq-iosched.h
-+++ b/block/bfq-iosched.h
-@@ -953,7 +953,11 @@
- 	char blkg_path[128];
- 
- 	/* reference counter (see comments in bfq_bic_update_cgroup) */
-+#ifdef __GENKSYMS__
-+	int ref;
-+#else
- 	atomic_t ref;
-+#endif
- 	/* Is bfq_group still online? */
- 	bool online;
- 
-diff --git a/block/blk-cgroup.h b/block/blk-cgroup.h
---- a/block/blk-cgroup.h
-+++ b/block/blk-cgroup.h
-@@ -125,9 +125,11 @@
- 	/* the blkg and policy id this per-policy data belongs to */
- 	struct blkcg_gq			*blkg;
- 	int				plid;
-+#ifndef __GENKSYMS__
- 	bool				online;
- 
- 	struct rcu_head			rcu_head;
-+#endif
- };
- 
- /*
-diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
---- a/drivers/usb/dwc3/core.h
-+++ b/drivers/usb/dwc3/core.h
-@@ -1165,7 +1165,9 @@
-  */
- struct dwc3 {
- 	struct work_struct	drd_work;
-+#ifndef __GENKSYMS__
- 	struct work_struct	err_recovery_work;
-+#endif
- 	struct dwc3_trb		*ep0_trb;
- 	void			*bounce;
- 	void			*scratchbuf;
-@@ -1182,8 +1184,10 @@
- 	/* mode switching lock */
- 	struct mutex		mutex;
- 
-+#ifndef __GENKSYMS__
- 	/* serializes pull-up run/stop vs error recovery */
- 	struct mutex		connect_mutex;
-+#endif
- 
- 	struct device		*dev;
- 	struct device		*sysdev;
-@@ -1227,8 +1231,10 @@
- 	enum usb_dr_mode	role_switch_default_mode;
- 
- 	struct power_supply	*usb_psy;
-+#ifndef __GENKSYMS__
- 	struct work_struct	vbus_draw_work;
- 	unsigned int		current_limit;
-+#endif
- 
- 	u32			fladj;
- 	u32			ref_clk_per;
-@@ -1303,9 +1309,11 @@
- 	enum dwc3_ep0_next	ep0_next_event;
- 	enum dwc3_ep0_state	ep0state;
- 	enum dwc3_link_state	link_state;
-+#ifndef __GENKSYMS__
- 	enum dwc3_err_state	err_state;
- 
- 	u32			err_recovery_count;
-+#endif
- 
- 	u16			u2sel;
- 	u16			u2pel;
-diff --git a/include/linux/bpf.h b/include/linux/bpf.h
---- a/include/linux/bpf.h
-+++ b/include/linux/bpf.h
-@@ -1185,9 +1185,11 @@
- 	bool sleepable;
- 	bool tail_call_reachable;
- 	bool xdp_has_frags;
-+#ifndef __GENKSYMS__
- 	bool is_extended; /* true if extended by freplace program */
- 	u64 prog_array_member_cnt; /* counts how many times as member of prog_array */
- 	struct mutex ext_mutex; /* mutex for is_extended and prog_array_member_cnt */
-+#endif
- 	/* BTF_KIND_FUNC_PROTO for valid attach_btf_id */
- 	const struct btf_type *attach_func_proto;
- 	/* function name for valid attach_btf_id */
-@@ -1297,6 +1299,9 @@
- 	enum bpf_link_type type;
- 	const struct bpf_link_ops *ops;
- 	struct bpf_prog *prog;
-+#ifdef __GENKSYMS__
-+	struct work_struct work;
-+#else
- 	/* rcu is used before freeing, work can be used to schedule that
- 	 * RCU-based freeing before that, so they never overlap
- 	 */
-@@ -1304,6 +1309,7 @@
- 		struct rcu_head rcu;
- 		struct work_struct work;
- 	};
-+#endif
- };
- 
- struct bpf_link_ops {
-@@ -1312,11 +1318,13 @@
- 	 * waiting
- 	 */
- 	void (*dealloc)(struct bpf_link *link);
-+#ifndef __GENKSYMS__
- 	/* deallocate link resources callback, called after RCU grace period;
- 	 * if underlying BPF program is sleepable we go through tasks trace
- 	 * RCU GP and then "classic" RCU GP
- 	 */
- 	void (*dealloc_deferred)(struct bpf_link *link);
-+#endif
- 	int (*detach)(struct bpf_link *link);
- 	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
- 			   struct bpf_prog *old_prog);
-diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h
---- a/include/linux/cgroup-defs.h
-+++ b/include/linux/cgroup-defs.h
-@@ -424,11 +424,13 @@
- 
- 	int nr_threaded_children;	/* # of live threaded child cgroups */
- 
-+#ifndef __GENKSYMS__
- 	/*
- 	 * Sequence number for cgroup.kill. Incremented with both cgroup_mutex
- 	 * and css_set_lock held. Readers hold either one.
- 	 */
- 	unsigned int kill_seq;
-+#endif
- 	struct kernfs_node *kn;		/* cgroup kernfs entry */
- 	struct cgroup_file procs_file;	/* handle for "cgroup.procs" */
- 	struct cgroup_file events_file;	/* handle for "cgroup.events" */
-diff --git a/include/linux/device-mapper.h b/include/linux/device-mapper.h
---- a/include/linux/device-mapper.h
-+++ b/include/linux/device-mapper.h
-@@ -361,10 +361,12 @@
- 	 */
- 	bool discards_supported:1;
- 
-+#ifndef __GENKSYMS__
- 	/*
- 	 * Set if this target requires stable data during writeback.
- 	 */
- 	bool needs_stable_writes:1;
-+#endif
- 
- 	/*
- 	 * Set if we need to limit the number of in-flight bios when swapping.
-diff --git a/include/linux/i3c/master.h b/include/linux/i3c/master.h
---- a/include/linux/i3c/master.h
-+++ b/include/linux/i3c/master.h
-@@ -231,7 +231,9 @@
- 	struct device dev;
- 	struct i3c_dev_desc *desc;
- 	struct i3c_bus *bus;
-+#ifndef __GENKSYMS__
- 	struct list_head node;
-+#endif
- };
- 
- /*
-diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
 --- a/include/linux/mm_types.h
 +++ b/include/linux/mm_types.h
-@@ -565,7 +565,7 @@
+@@ -565,9 +565,6 @@
  #else
  struct mm_struct_abi_extend {
  	struct task_dma_buf_info *dmabuf_info;
 -#ifdef CONFIG_FUTEX
-+#if defined(CONFIG_FUTEX) && !defined(__GENKSYMS__)
- 	atomic64_t futex_unique_id;
- #endif
+-	atomic64_t futex_unique_id;
+-#endif
  };
-diff --git a/include/linux/mtd/mtd.h b/include/linux/mtd/mtd.h
---- a/include/linux/mtd/mtd.h
-+++ b/include/linux/mtd/mtd.h
-@@ -379,7 +379,11 @@
+ #endif
  
- 	struct module *owner;
- 	struct device dev;
-+#ifdef __GENKSYMS__
-+	int usecount;
-+#else
- 	struct kref refcnt;
-+#endif
- 	struct mtd_debug_info dbg;
- 	struct nvmem_device *nvmem;
- 	struct nvmem_device *otp_user_nvmem;
-diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+@@ -665,6 +662,7 @@
+ 		int mm_lock_seq;
+ #endif
+ 
++
+ 		unsigned long hiwater_rss; /* High-watermark of RSS usage */
+ 		unsigned long hiwater_vm;  /* High-water virtual memory usage */
+ 
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -1265,10 +1265,6 @@
+ #endif
+ 	mm_init_uprobes_state(mm);
+ 	hugetlb_count_init(mm);
+-#ifdef CONFIG_FUTEX
+-	if (mm->abi_extend)
+-		atomic64_set(&mm->abi_extend->futex_unique_id, 0);
+-#endif
+ 
+ 	if (current->mm) {
+ 		mm->flags = current->mm->flags & MMF_INIT_MASK;
+--- a/drivers/firmware/arm_scmi/bus.c
++++ b/drivers/firmware/arm_scmi/bus.c
+@@ -7,197 +7,17 @@
+ 
+ #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 
+-#include <linux/atomic.h>
+ #include <linux/types.h>
+ #include <linux/module.h>
+-#include <linux/of.h>
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+ #include <linux/device.h>
+ 
+ #include "common.h"
+ 
+-BLOCKING_NOTIFIER_HEAD(scmi_requested_devices_nh);
+-EXPORT_SYMBOL_GPL(scmi_requested_devices_nh);
+-
+ static DEFINE_IDA(scmi_bus_id);
+-
+-static DEFINE_IDR(scmi_requested_devices);
+-/* Protect access to scmi_requested_devices */
+-static DEFINE_MUTEX(scmi_requested_devices_mtx);
+-
+-struct scmi_requested_dev {
+-	const struct scmi_device_id *id_table;
+-	struct list_head node;
+-};
+-
+-/* Track globally the creation of SCMI SystemPower related devices */
+-static atomic_t scmi_syspower_registered = ATOMIC_INIT(0);
+-
+-/**
+- * scmi_protocol_device_request  - Helper to request a device
+- *
+- * @id_table: A protocol/name pair descriptor for the device to be created.
+- *
+- * This helper let an SCMI driver request specific devices identified by the
+- * @id_table to be created for each active SCMI instance.
+- *
+- * The requested device name MUST NOT be already existent for any protocol;
+- * at first the freshly requested @id_table is annotated in the IDR table
+- * @scmi_requested_devices and then the requested device is advertised to any
+- * registered party via the @scmi_requested_devices_nh notification chain.
+- *
+- * Return: 0 on Success
+- */
+-static int scmi_protocol_device_request(const struct scmi_device_id *id_table)
+-{
+-	int ret = 0;
+-	unsigned int id = 0;
+-	struct list_head *head, *phead = NULL;
+-	struct scmi_requested_dev *rdev;
+-
+-	pr_debug("Requesting SCMI device (%s) for protocol %x\n",
+-		 id_table->name, id_table->protocol_id);
+-
+-	/*
+-	 * Search for the matching protocol rdev list and then search
+-	 * of any existent equally named device...fails if any duplicate found.
+-	 */
+-	mutex_lock(&scmi_requested_devices_mtx);
+-	idr_for_each_entry(&scmi_requested_devices, head, id) {
+-		if (!phead) {
+-			/* A list found registered in the IDR is never empty */
+-			rdev = list_first_entry(head, struct scmi_requested_dev,
+-						node);
+-			if (rdev->id_table->protocol_id ==
+-			    id_table->protocol_id)
+-				phead = head;
+-		}
+-		list_for_each_entry(rdev, head, node) {
+-			if (!strcmp(rdev->id_table->name, id_table->name)) {
+-				pr_err("Ignoring duplicate request [%d] %s\n",
+-				       rdev->id_table->protocol_id,
+-				       rdev->id_table->name);
+-				ret = -EINVAL;
+-				goto out;
+-			}
+-		}
+-	}
+-
+-	/*
+-	 * No duplicate found for requested id_table, so let's create a new
+-	 * requested device entry for this new valid request.
+-	 */
+-	rdev = kzalloc(sizeof(*rdev), GFP_KERNEL);
+-	if (!rdev) {
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+-	rdev->id_table = id_table;
+-
+-	/*
+-	 * Append the new requested device table descriptor to the head of the
+-	 * related protocol list, eventually creating such head if not already
+-	 * there.
+-	 */
+-	if (!phead) {
+-		phead = kzalloc(sizeof(*phead), GFP_KERNEL);
+-		if (!phead) {
+-			kfree(rdev);
+-			ret = -ENOMEM;
+-			goto out;
+-		}
+-		INIT_LIST_HEAD(phead);
+-
+-		ret = idr_alloc(&scmi_requested_devices, (void *)phead,
+-				id_table->protocol_id,
+-				id_table->protocol_id + 1, GFP_KERNEL);
+-		if (ret != id_table->protocol_id) {
+-			pr_err("Failed to save SCMI device - ret:%d\n", ret);
+-			kfree(rdev);
+-			kfree(phead);
+-			ret = -EINVAL;
+-			goto out;
+-		}
+-		ret = 0;
+-	}
+-	list_add(&rdev->node, phead);
+-
+-out:
+-	mutex_unlock(&scmi_requested_devices_mtx);
+-
+-	if (!ret)
+-		blocking_notifier_call_chain(&scmi_requested_devices_nh,
+-					     SCMI_BUS_NOTIFY_DEVICE_REQUEST,
+-					     (void *)rdev->id_table);
+-
+-	return ret;
+-}
+-
+-static int scmi_protocol_table_register(const struct scmi_device_id *id_table)
+-{
+-	int ret = 0;
+-	const struct scmi_device_id *entry;
+-
+-	for (entry = id_table; entry->name && ret == 0; entry++)
+-		ret = scmi_protocol_device_request(entry);
+-
+-	return ret;
+-}
+-
+-/**
+- * scmi_protocol_device_unrequest  - Helper to unrequest a device
+- *
+- * @id_table: A protocol/name pair descriptor for the device to be unrequested.
+- *
+- * The unrequested device, described by the provided id_table, is at first
+- * removed from the IDR @scmi_requested_devices and then the removal is
+- * advertised to any registered party via the @scmi_requested_devices_nh
+- * notification chain.
+- */
+-static void scmi_protocol_device_unrequest(const struct scmi_device_id *id_table)
+-{
+-	struct scmi_requested_dev *rdev, *victim = NULL;
+-	struct list_head *phead;
+-
+-	pr_debug("Unrequesting SCMI device (%s) for protocol %x\n",
+-		 id_table->name, id_table->protocol_id);
+-
+-	mutex_lock(&scmi_requested_devices_mtx);
+-	phead = idr_find(&scmi_requested_devices, id_table->protocol_id);
+-	if (phead) {
+-		list_for_each_entry(rdev, phead, node) {
+-			if (!strcmp(rdev->id_table->name, id_table->name)) {
+-				victim = rdev;
+-				list_del(&rdev->node);
+-				break;
+-			}
+-		}
+-
+-		if (victim && list_empty(phead)) {
+-			idr_remove(&scmi_requested_devices,
+-				   id_table->protocol_id);
+-			kfree(phead);
+-		}
+-	}
+-	mutex_unlock(&scmi_requested_devices_mtx);
+-
+-	if (victim) {
+-		blocking_notifier_call_chain(&scmi_requested_devices_nh,
+-					     SCMI_BUS_NOTIFY_DEVICE_UNREQUEST,
+-					     (void *)victim->id_table);
+-		kfree(victim);
+-	}
+-}
+-
+-static void
+-scmi_protocol_table_unregister(const struct scmi_device_id *id_table)
+-{
+-	const struct scmi_device_id *entry;
+-
+-	for (entry = id_table; entry->name; entry++)
+-		scmi_protocol_device_unrequest(entry);
+-}
++static DEFINE_IDR(scmi_protocols);
++static DEFINE_SPINLOCK(protocol_lock);
+ 
+ static const struct scmi_device_id *
+ scmi_dev_match_id(struct scmi_device *scmi_dev, struct scmi_driver *scmi_drv)
+@@ -237,12 +57,11 @@
+ 	struct scmi_device_id *id_table = data;
+ 
+ 	return sdev->protocol_id == id_table->protocol_id &&
+-		(id_table->name && !strcmp(sdev->name, id_table->name));
+-}
+-
+-/* Returns a device_find_child() reference which must be dropped by caller. */
+-static struct scmi_device *
+-scmi_child_dev_find_get(struct device *parent, int prot_id, const char *name)
++		!strcmp(sdev->name, id_table->name);
++}
++
++struct scmi_device *scmi_child_dev_find(struct device *parent,
++					int prot_id, const char *name)
+ {
+ 	struct scmi_device_id id_table;
+ 	struct device *dev;
+@@ -254,7 +73,34 @@
+ 	if (!dev)
+ 		return NULL;
+ 
++	/* Drop the refcnt bumped implicitly by device_find_child */
++	put_device(dev);
++
+ 	return to_scmi_dev(dev);
++}
++
++const struct scmi_protocol *scmi_protocol_get(int protocol_id)
++{
++	const struct scmi_protocol *proto;
++
++	proto = idr_find(&scmi_protocols, protocol_id);
++	if (!proto || !try_module_get(proto->owner)) {
++		pr_warn("SCMI Protocol 0x%x not found!\n", protocol_id);
++		return NULL;
++	}
++
++	pr_debug("Found SCMI Protocol 0x%x\n", protocol_id);
++
++	return proto;
++}
++
++void scmi_protocol_put(int protocol_id)
++{
++	const struct scmi_protocol *proto;
++
++	proto = idr_find(&scmi_protocols, protocol_id);
++	if (proto)
++		module_put(proto->owner);
+ }
+ 
+ static int scmi_dev_probe(struct device *dev)
+@@ -277,13 +123,12 @@
+ 		scmi_drv->remove(scmi_dev);
+ }
+ 
+-struct bus_type scmi_bus_type = {
++static struct bus_type scmi_bus_type = {
+ 	.name =	"scmi_protocol",
+ 	.match = scmi_dev_match,
+ 	.probe = scmi_dev_probe,
+ 	.remove = scmi_dev_remove,
+ };
+-EXPORT_SYMBOL_GPL(scmi_bus_type);
+ 
+ int scmi_driver_register(struct scmi_driver *driver, struct module *owner,
+ 			 const char *mod_name)
+@@ -293,7 +138,7 @@
+ 	if (!driver->probe)
+ 		return -EINVAL;
+ 
+-	retval = scmi_protocol_table_register(driver->id_table);
++	retval = scmi_protocol_device_request(driver->id_table);
+ 	if (retval)
+ 		return retval;
+ 
+@@ -303,89 +148,31 @@
+ 	driver->driver.mod_name = mod_name;
+ 
+ 	retval = driver_register(&driver->driver);
+-	if (retval) {
+-		scmi_protocol_table_unregister(driver->id_table);
+-		return retval;
+-	}
+-
+-	pr_debug("Registered new scmi driver %s\n", driver->name);
+-
+-	return 0;
++	if (!retval)
++		pr_debug("registered new scmi driver %s\n", driver->name);
++
++	return retval;
+ }
+ EXPORT_SYMBOL_GPL(scmi_driver_register);
+ 
+ void scmi_driver_unregister(struct scmi_driver *driver)
+ {
+ 	driver_unregister(&driver->driver);
+-	scmi_protocol_table_unregister(driver->id_table);
++	scmi_protocol_device_unrequest(driver->id_table);
+ }
+ EXPORT_SYMBOL_GPL(scmi_driver_unregister);
+ 
+-static void scmi_device_release_resources(struct scmi_device *scmi_dev)
+-{
+-	if (scmi_dev->id) {
+-		ida_free(&scmi_bus_id, scmi_dev->id);
+-		scmi_dev->id = 0;
+-	}
+-}
+-
+ static void scmi_device_release(struct device *dev)
+ {
+-	struct scmi_device *scmi_dev = to_scmi_dev(dev);
+-
+-	scmi_device_release_resources(scmi_dev);
+-	kfree_const(scmi_dev->name);
+-	kfree(scmi_dev);
+-}
+-
+-static void __scmi_device_destroy(struct scmi_device *scmi_dev)
+-{
+-	pr_debug("(%s) Destroying SCMI device '%s' for protocol 0x%x (%s)\n",
+-		 of_node_full_name(scmi_dev->dev.parent->of_node),
+-		 dev_name(&scmi_dev->dev), scmi_dev->protocol_id,
+-		 scmi_dev->name);
+-
+-	if (scmi_dev->protocol_id == SCMI_PROTOCOL_SYSTEM)
+-		atomic_set(&scmi_syspower_registered, 0);
+-
+-	device_del(&scmi_dev->dev);
+-	scmi_device_release_resources(scmi_dev);
+-	put_device(&scmi_dev->dev);
+-}
+-
+-static struct scmi_device *
+-__scmi_device_create(struct device_node *np, struct device *parent,
+-		     int protocol, const char *name)
++	kfree(to_scmi_dev(dev));
++}
++
++struct scmi_device *
++scmi_device_create(struct device_node *np, struct device *parent, int protocol,
++		   const char *name)
+ {
+ 	int id, retval;
+ 	struct scmi_device *scmi_dev;
+-
+-	/*
+-	 * If the same protocol/name device already exist under the same parent
+-	 * (i.e. SCMI instance) just return the existent device.
+-	 * This avoids any race between the SCMI driver, creating devices for
+-	 * each DT defined protocol at probe time, and the concurrent
+-	 * registration of SCMI drivers.
+-	 */
+-	scmi_dev = scmi_child_dev_find_get(parent, protocol, name);
+-	if (scmi_dev) {
+-		put_device(&scmi_dev->dev);
+-		return scmi_dev;
+-	}
+-
+-	/*
+-	 * Ignore any possible subsequent failures while creating the device
+-	 * since we are doomed anyway at that point; not using a mutex which
+-	 * spans across this whole function to keep things simple and to avoid
+-	 * to serialize all the __scmi_device_create calls across possibly
+-	 * different SCMI server instances (parent)
+-	 */
+-	if (protocol == SCMI_PROTOCOL_SYSTEM &&
+-	    atomic_cmpxchg(&scmi_syspower_registered, 0, 1)) {
+-		dev_warn(parent,
+-			 "SCMI SystemPower protocol device must be unique !\n");
+-		return NULL;
+-	}
+ 
+ 	scmi_dev = kzalloc(sizeof(*scmi_dev), GFP_KERNEL);
+ 	if (!scmi_dev)
+@@ -416,98 +203,85 @@
+ 	if (retval)
+ 		goto put_dev;
+ 
+-	pr_debug("(%s) Created SCMI device '%s' for protocol 0x%x (%s)\n",
+-		 of_node_full_name(parent->of_node),
+-		 dev_name(&scmi_dev->dev), protocol, name);
+-
+ 	return scmi_dev;
+ put_dev:
+-	scmi_device_release_resources(scmi_dev);
++	kfree_const(scmi_dev->name);
+ 	put_device(&scmi_dev->dev);
++	ida_free(&scmi_bus_id, id);
+ 	return NULL;
+ }
+ 
+-/**
+- * scmi_device_create  - A method to create one or more SCMI devices
+- *
+- * @np: A reference to the device node to use for the new device(s)
+- * @parent: The parent device to use identifying a specific SCMI instance
+- * @protocol: The SCMI protocol to be associated with this device
+- * @name: The requested-name of the device to be created; this is optional
+- *	  and if no @name is provided, all the devices currently known to
+- *	  be requested on the SCMI bus for @protocol will be created.
+- *
+- * This method can be invoked to create a single well-defined device (like
+- * a transport device or a device requested by an SCMI driver loaded after
+- * the core SCMI stack has been probed), or to create all the devices currently
+- * known to have been requested by the loaded SCMI drivers for a specific
+- * protocol (typically during SCMI core protocol enumeration at probe time).
+- *
+- * Return: The created device (or one of them if @name was NOT provided and
+- *	   multiple devices were created) or NULL if no device was created;
+- *	   note that NULL indicates an error ONLY in case a specific @name
+- *	   was provided: when @name param was not provided, a number of devices
+- *	   could have been potentially created for a whole protocol, unless no
+- *	   device was found to have been requested for that specific protocol.
+- */
+-struct scmi_device *scmi_device_create(struct device_node *np,
+-				       struct device *parent, int protocol,
+-				       const char *name)
+-{
+-	struct list_head *phead;
+-	struct scmi_requested_dev *rdev;
+-	struct scmi_device *scmi_dev = NULL;
+-
+-	if (name)
+-		return __scmi_device_create(np, parent, protocol, name);
+-
+-	mutex_lock(&scmi_requested_devices_mtx);
+-	phead = idr_find(&scmi_requested_devices, protocol);
+-	/* Nothing to do. */
+-	if (!phead) {
+-		mutex_unlock(&scmi_requested_devices_mtx);
+-		return scmi_dev;
+-	}
+-
+-	/* Walk the list of requested devices for protocol and create them */
+-	list_for_each_entry(rdev, phead, node) {
+-		struct scmi_device *sdev;
+-
+-		sdev = __scmi_device_create(np, parent,
+-					    rdev->id_table->protocol_id,
+-					    rdev->id_table->name);
+-		/* Report errors and carry on... */
+-		if (sdev)
+-			scmi_dev = sdev;
+-		else
+-			pr_err("(%s) Failed to create device for protocol 0x%x (%s)\n",
+-			       of_node_full_name(parent->of_node),
+-			       rdev->id_table->protocol_id,
+-			       rdev->id_table->name);
+-	}
+-	mutex_unlock(&scmi_requested_devices_mtx);
+-
+-	return scmi_dev;
+-}
+-EXPORT_SYMBOL_GPL(scmi_device_create);
+-
+-void scmi_device_destroy(struct device *parent, int protocol, const char *name)
+-{
+-	struct scmi_device *scmi_dev;
+-
+-	scmi_dev = scmi_child_dev_find_get(parent, protocol, name);
+-	if (scmi_dev) {
+-		__scmi_device_destroy(scmi_dev);
+-		put_device(&scmi_dev->dev);
+-	}
+-}
+-EXPORT_SYMBOL_GPL(scmi_device_destroy);
++void scmi_device_destroy(struct scmi_device *scmi_dev)
++{
++	kfree_const(scmi_dev->name);
++	scmi_handle_put(scmi_dev->handle);
++	ida_free(&scmi_bus_id, scmi_dev->id);
++	device_unregister(&scmi_dev->dev);
++}
++
++void scmi_device_link_add(struct device *consumer, struct device *supplier)
++{
++	struct device_link *link;
++
++	link = device_link_add(consumer, supplier, DL_FLAG_AUTOREMOVE_CONSUMER);
++
++	WARN_ON(!link);
++}
++
++void scmi_set_handle(struct scmi_device *scmi_dev)
++{
++	scmi_dev->handle = scmi_handle_get(&scmi_dev->dev);
++	if (scmi_dev->handle)
++		scmi_device_link_add(&scmi_dev->dev, scmi_dev->handle->dev);
++}
++
++int scmi_protocol_register(const struct scmi_protocol *proto)
++{
++	int ret;
++
++	if (!proto) {
++		pr_err("invalid protocol\n");
++		return -EINVAL;
++	}
++
++	if (!proto->instance_init) {
++		pr_err("missing init for protocol 0x%x\n", proto->id);
++		return -EINVAL;
++	}
++
++	spin_lock(&protocol_lock);
++	ret = idr_alloc(&scmi_protocols, (void *)proto,
++			proto->id, proto->id + 1, GFP_ATOMIC);
++	spin_unlock(&protocol_lock);
++	if (ret != proto->id) {
++		pr_err("unable to allocate SCMI idr slot for 0x%x - err %d\n",
++		       proto->id, ret);
++		return ret;
++	}
++
++	pr_debug("Registered SCMI Protocol 0x%x\n", proto->id);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(scmi_protocol_register);
++
++void scmi_protocol_unregister(const struct scmi_protocol *proto)
++{
++	spin_lock(&protocol_lock);
++	idr_remove(&scmi_protocols, proto->id);
++	spin_unlock(&protocol_lock);
++
++	pr_debug("Unregistered SCMI Protocol 0x%x\n", proto->id);
++
++	return;
++}
++EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
+ 
+ static int __scmi_devices_unregister(struct device *dev, void *data)
+ {
+ 	struct scmi_device *scmi_dev = to_scmi_dev(dev);
+ 
+-	__scmi_device_destroy(scmi_dev);
++	scmi_device_destroy(scmi_dev);
+ 	return 0;
+ }
+ 
+@@ -529,10 +303,6 @@
+ 
+ void __exit scmi_bus_exit(void)
+ {
+-	/*
+-	 * Destroy all remaining devices: just in case the drivers were
+-	 * manually unbound and at first and then the modules unloaded.
+-	 */
+ 	scmi_devices_unregister();
+ 	bus_unregister(&scmi_bus_type);
+ 	ida_destroy(&scmi_bus_id);
+--- a/drivers/firmware/arm_scmi/common.h
++++ b/drivers/firmware/arm_scmi/common.h
+@@ -27,46 +27,6 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
+-#define SCMI_MAX_RESPONSE_TIMEOUT	(2 * MSEC_PER_SEC)
+-
+-enum scmi_error_codes {
+-	SCMI_SUCCESS = 0,	/* Success */
+-	SCMI_ERR_SUPPORT = -1,	/* Not supported */
+-	SCMI_ERR_PARAMS = -2,	/* Invalid Parameters */
+-	SCMI_ERR_ACCESS = -3,	/* Invalid access/permission denied */
+-	SCMI_ERR_ENTRY = -4,	/* Not found */
+-	SCMI_ERR_RANGE = -5,	/* Value out of range */
+-	SCMI_ERR_BUSY = -6,	/* Device busy */
+-	SCMI_ERR_COMMS = -7,	/* Communication Error */
+-	SCMI_ERR_GENERIC = -8,	/* Generic Error */
+-	SCMI_ERR_HARDWARE = -9,	/* Hardware Error */
+-	SCMI_ERR_PROTOCOL = -10,/* Protocol Error */
+-};
+-
+-static const int scmi_linux_errmap[] = {
+-	/* better than switch case as long as return value is continuous */
+-	0,			/* SCMI_SUCCESS */
+-	-EOPNOTSUPP,		/* SCMI_ERR_SUPPORT */
+-	-EINVAL,		/* SCMI_ERR_PARAM */
+-	-EACCES,		/* SCMI_ERR_ACCESS */
+-	-ENOENT,		/* SCMI_ERR_ENTRY */
+-	-ERANGE,		/* SCMI_ERR_RANGE */
+-	-EBUSY,			/* SCMI_ERR_BUSY */
+-	-ECOMM,			/* SCMI_ERR_COMMS */
+-	-EIO,			/* SCMI_ERR_GENERIC */
+-	-EREMOTEIO,		/* SCMI_ERR_HARDWARE */
+-	-EPROTO,		/* SCMI_ERR_PROTOCOL */
+-};
+-
+-static inline int scmi_to_linux_errno(int errno)
+-{
+-	int err_idx = -errno;
+-
+-	if (err_idx >= SCMI_SUCCESS && err_idx < ARRAY_SIZE(scmi_linux_errmap))
+-		return scmi_linux_errmap[err_idx];
+-	return -EIO;
+-}
+-
+ #define MSG_ID_MASK		GENMASK(7, 0)
+ #define MSG_XTRACT_ID(hdr)	FIELD_GET(MSG_ID_MASK, (hdr))
+ #define MSG_TYPE_MASK		GENMASK(9, 8)
+@@ -136,21 +96,18 @@
+ 
+ struct scmi_revision_info *
+ scmi_revision_area_get(const struct scmi_protocol_handle *ph);
++int scmi_handle_put(const struct scmi_handle *handle);
++void scmi_device_link_add(struct device *consumer, struct device *supplier);
++struct scmi_handle *scmi_handle_get(struct device *dev);
++void scmi_set_handle(struct scmi_device *scmi_dev);
+ void scmi_setup_protocol_implemented(const struct scmi_protocol_handle *ph,
+ 				     u8 *prot_imp);
+ 
+ int __init scmi_bus_init(void);
+ void __exit scmi_bus_exit(void);
+-extern struct bus_type scmi_bus_type;
+-
+-#define SCMI_BUS_NOTIFY_DEVICE_REQUEST		0
+-#define SCMI_BUS_NOTIFY_DEVICE_UNREQUEST	1
+-extern struct blocking_notifier_head scmi_requested_devices_nh;
+-
+-struct scmi_device *scmi_device_create(struct device_node *np,
+-				       struct device *parent, int protocol,
+-				       const char *name);
+-void scmi_device_destroy(struct device *parent, int protocol, const char *name);
++
++const struct scmi_protocol *scmi_protocol_get(int protocol_id);
++void scmi_protocol_put(int protocol_id);
+ 
+ int scmi_protocol_acquire(const struct scmi_handle *handle, u8 protocol_id);
+ void scmi_protocol_release(const struct scmi_handle *handle, u8 protocol_id);
+@@ -159,8 +116,6 @@
+ /**
+  * struct scmi_chan_info - Structure representing a SCMI channel information
+  *
+- * @id: An identifier for this channel: this matches the protocol number
+- *      used to initialize this channel
+  * @dev: Reference to device in the SCMI hierarchy corresponding to this
+  *	 channel
+  * @rx_timeout_ms: The configured RX timeout in milliseconds.
+@@ -172,7 +127,6 @@
+  * @transport_info: Transport layer related information
+  */
+ struct scmi_chan_info {
+-	int id;
+ 	struct device *dev;
+ 	unsigned int rx_timeout_ms;
+ 	struct scmi_handle *handle;
+@@ -199,7 +153,7 @@
+  */
+ struct scmi_transport_ops {
+ 	int (*link_supplier)(struct device *dev);
+-	bool (*chan_available)(struct device_node *of_node, int idx);
++	bool (*chan_available)(struct device *dev, int idx);
+ 	int (*chan_setup)(struct scmi_chan_info *cinfo, struct device *dev,
+ 			  bool tx);
+ 	int (*chan_free)(int id, void *p, void *data);
+@@ -215,6 +169,11 @@
+ 	void (*clear_channel)(struct scmi_chan_info *cinfo);
+ 	bool (*poll_done)(struct scmi_chan_info *cinfo, struct scmi_xfer *xfer);
+ };
++
++int scmi_protocol_device_request(const struct scmi_device_id *id_table);
++void scmi_protocol_device_unrequest(const struct scmi_device_id *id_table);
++struct scmi_device *scmi_child_dev_find(struct device *parent,
++					int prot_id, const char *name);
+ 
+ /**
+  * struct scmi_desc - Description of SoC integration
+@@ -270,6 +229,7 @@
+ #endif
+ 
+ void scmi_rx_callback(struct scmi_chan_info *cinfo, u32 msg_hdr, void *priv);
++void scmi_free_channel(struct scmi_chan_info *cinfo, struct idr *idr, int id);
+ 
+ /* Used for compactness and signature validation of the function pointers being
+  * passed.
+--- a/drivers/firmware/arm_scmi/driver.c
++++ b/drivers/firmware/arm_scmi/driver.c
+@@ -13,8 +13,6 @@
+  *
+  * Copyright (C) 2018-2021 ARM Ltd.
+  */
+-
+-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 
+ #include <linux/bitmap.h>
+ #include <linux/device.h>
+@@ -30,7 +28,6 @@
+ #include <linux/of_address.h>
+ #include <linux/of_device.h>
+ #include <linux/processor.h>
+-#include <linux/rcupdate.h>
+ #include <linux/refcount.h>
+ #include <linux/slab.h>
+ 
+@@ -40,10 +37,19 @@
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/scmi.h>
+ 
+-static DEFINE_IDA(scmi_id);
+-
+-static DEFINE_IDR(scmi_protocols);
+-static DEFINE_SPINLOCK(protocol_lock);
++enum scmi_error_codes {
++	SCMI_SUCCESS = 0,	/* Success */
++	SCMI_ERR_SUPPORT = -1,	/* Not supported */
++	SCMI_ERR_PARAMS = -2,	/* Invalid Parameters */
++	SCMI_ERR_ACCESS = -3,	/* Invalid access/permission denied */
++	SCMI_ERR_ENTRY = -4,	/* Not found */
++	SCMI_ERR_RANGE = -5,	/* Value out of range */
++	SCMI_ERR_BUSY = -6,	/* Device busy */
++	SCMI_ERR_COMMS = -7,	/* Communication Error */
++	SCMI_ERR_GENERIC = -8,	/* Generic Error */
++	SCMI_ERR_HARDWARE = -9,	/* Hardware Error */
++	SCMI_ERR_PROTOCOL = -10,/* Protocol Error */
++};
+ 
+ /* List of all SCMI devices active in system */
+ static LIST_HEAD(scmi_list);
+@@ -51,6 +57,19 @@
+ static DEFINE_MUTEX(scmi_list_mutex);
+ /* Track the unique id for the transfers for debug & profiling purpose */
+ static atomic_t transfer_last_id;
++
++static DEFINE_IDR(scmi_requested_devices);
++static DEFINE_MUTEX(scmi_requested_devices_mtx);
++
++/* Track globally the creation of SCMI SystemPower related devices */
++static bool scmi_syspower_registered;
++/* Protect access to scmi_syspower_registered */
++static DEFINE_MUTEX(scmi_syspower_mtx);
++
++struct scmi_requested_dev {
++	const struct scmi_device_id *id_table;
++	struct list_head node;
++};
+ 
+ /**
+  * struct scmi_xfers_info - Structure to manage transfer information
+@@ -101,7 +120,6 @@
+ /**
+  * struct scmi_info - Structure representing a SCMI instance
+  *
+- * @id: A sequence number starting from zero identifying this instance
+  * @dev: Device pointer
+  * @desc: SoC description for this instance
+  * @version: SCMI revision information containing protocol version,
+@@ -129,13 +147,8 @@
+  * @notify_priv: Pointer to private data structure specific to notifications.
+  * @node: List head
+  * @users: Number of users of this instance
+- * @bus_nb: A notifier to listen for device bind/unbind on the scmi bus
+- * @dev_req_nb: A notifier to listen for device request/unrequest on the scmi
+- *		bus
+- * @devreq_mtx: A mutex to serialize device creation for this SCMI instance
+  */
+ struct scmi_info {
+-	int id;
+ 	struct device *dev;
+ 	const struct scmi_desc *desc;
+ 	struct scmi_revision_info version;
+@@ -153,112 +166,32 @@
+ 	void *notify_priv;
+ 	struct list_head node;
+ 	int users;
+-	struct notifier_block bus_nb;
+-	struct notifier_block dev_req_nb;
+-	/* Serialize device creation process for this instance */
+-	struct mutex devreq_mtx;
+ };
+ 
+ #define handle_to_scmi_info(h)	container_of(h, struct scmi_info, handle)
+-#define bus_nb_to_scmi_info(nb)	container_of(nb, struct scmi_info, bus_nb)
+-#define req_nb_to_scmi_info(nb)	container_of(nb, struct scmi_info, dev_req_nb)
+-
+-static const struct scmi_protocol *scmi_protocol_get(int protocol_id)
+-{
+-	const struct scmi_protocol *proto;
+-
+-	proto = idr_find(&scmi_protocols, protocol_id);
+-	if (!proto || !try_module_get(proto->owner)) {
+-		pr_warn("SCMI Protocol 0x%x not found!\n", protocol_id);
+-		return NULL;
+-	}
+-
+-	pr_debug("Found SCMI Protocol 0x%x\n", protocol_id);
+-
+-	return proto;
+-}
+-
+-static void scmi_protocol_put(int protocol_id)
+-{
+-	const struct scmi_protocol *proto;
+-
+-	proto = idr_find(&scmi_protocols, protocol_id);
+-	if (proto)
+-		module_put(proto->owner);
+-}
+-
+-int scmi_protocol_register(const struct scmi_protocol *proto)
+-{
+-	int ret;
+-
+-	if (!proto) {
+-		pr_err("invalid protocol\n");
+-		return -EINVAL;
+-	}
+-
+-	if (!proto->instance_init) {
+-		pr_err("missing init for protocol 0x%x\n", proto->id);
+-		return -EINVAL;
+-	}
+-
+-	spin_lock(&protocol_lock);
+-	ret = idr_alloc(&scmi_protocols, (void *)proto,
+-			proto->id, proto->id + 1, GFP_ATOMIC);
+-	spin_unlock(&protocol_lock);
+-	if (ret != proto->id) {
+-		pr_err("unable to allocate SCMI idr slot for 0x%x - err %d\n",
+-		       proto->id, ret);
+-		return ret;
+-	}
+-
+-	pr_debug("Registered SCMI Protocol 0x%x\n", proto->id);
+-
+-	return 0;
+-}
+-EXPORT_SYMBOL_GPL(scmi_protocol_register);
+-
+-void scmi_protocol_unregister(const struct scmi_protocol *proto)
+-{
+-	spin_lock(&protocol_lock);
+-	idr_remove(&scmi_protocols, proto->id);
+-	spin_unlock(&protocol_lock);
+-
+-	pr_debug("Unregistered SCMI Protocol 0x%x\n", proto->id);
+-}
+-EXPORT_SYMBOL_GPL(scmi_protocol_unregister);
+-
+-/**
+- * scmi_create_protocol_devices  - Create devices for all pending requests for
+- * this SCMI instance.
+- *
+- * @np: The device node describing the protocol
+- * @info: The SCMI instance descriptor
+- * @prot_id: The protocol ID
+- * @name: The optional name of the device to be created: if not provided this
+- *	  call will lead to the creation of all the devices currently requested
+- *	  for the specified protocol.
+- */
+-static void scmi_create_protocol_devices(struct device_node *np,
+-					 struct scmi_info *info,
+-					 int prot_id, const char *name)
+-{
+-	struct scmi_device *sdev;
+-
+-	mutex_lock(&info->devreq_mtx);
+-	sdev = scmi_device_create(np, info->dev, prot_id, name);
+-	if (name && !sdev)
+-		dev_err(info->dev,
+-			"failed to create device for protocol 0x%X (%s)\n",
+-			prot_id, name);
+-	mutex_unlock(&info->devreq_mtx);
+-}
+-
+-static void scmi_destroy_protocol_devices(struct scmi_info *info,
+-					  int prot_id, const char *name)
+-{
+-	mutex_lock(&info->devreq_mtx);
+-	scmi_device_destroy(info->dev, prot_id, name);
+-	mutex_unlock(&info->devreq_mtx);
++
++static const int scmi_linux_errmap[] = {
++	/* better than switch case as long as return value is continuous */
++	0,			/* SCMI_SUCCESS */
++	-EOPNOTSUPP,		/* SCMI_ERR_SUPPORT */
++	-EINVAL,		/* SCMI_ERR_PARAM */
++	-EACCES,		/* SCMI_ERR_ACCESS */
++	-ENOENT,		/* SCMI_ERR_ENTRY */
++	-ERANGE,		/* SCMI_ERR_RANGE */
++	-EBUSY,			/* SCMI_ERR_BUSY */
++	-ECOMM,			/* SCMI_ERR_COMMS */
++	-EIO,			/* SCMI_ERR_GENERIC */
++	-EREMOTEIO,		/* SCMI_ERR_HARDWARE */
++	-EPROTO,		/* SCMI_ERR_PROTOCOL */
++};
++
++static inline int scmi_to_linux_errno(int errno)
++{
++	int err_idx = -errno;
++
++	if (err_idx >= SCMI_SUCCESS && err_idx < ARRAY_SIZE(scmi_linux_errmap))
++		return scmi_linux_errmap[err_idx];
++	return -EIO;
+ }
+ 
+ void scmi_notification_instance_data_set(const struct scmi_handle *handle,
+@@ -1021,6 +954,8 @@
+ 	xfer->rx.len = info->desc->max_msg_size;
+ }
+ 
++#define SCMI_MAX_RESPONSE_TIMEOUT	(2 * MSEC_PER_SEC)
++
+ /**
+  * do_xfer_with_response() - Do one transfer and wait until the delayed
+  *	response is received
+@@ -1937,6 +1872,13 @@
+ 	return ret;
+ }
+ 
++static inline
++struct scmi_handle *scmi_handle_get_from_info_unlocked(struct scmi_info *info)
++{
++	info->users++;
++	return &info->handle;
++}
++
+ /**
+  * scmi_handle_get() - Get the SCMI handle for a device
+  *
+@@ -1948,7 +1890,7 @@
+  *
+  * Return: pointer to handle if successful, NULL on error
+  */
+-static struct scmi_handle *scmi_handle_get(struct device *dev)
++struct scmi_handle *scmi_handle_get(struct device *dev)
+ {
+ 	struct list_head *p;
+ 	struct scmi_info *info;
+@@ -1958,8 +1900,7 @@
+ 	list_for_each(p, &scmi_list) {
+ 		info = list_entry(p, struct scmi_info, node);
+ 		if (dev->parent == info->dev) {
+-			info->users++;
+-			handle = &info->handle;
++			handle = scmi_handle_get_from_info_unlocked(info);
+ 			break;
+ 		}
+ 	}
+@@ -1980,7 +1921,7 @@
+  * Return: 0 is successfully released
+  *	if null was passed, it returns -EINVAL;
+  */
+-static int scmi_handle_put(const struct scmi_handle *handle)
++int scmi_handle_put(const struct scmi_handle *handle)
+ {
+ 	struct scmi_info *info;
+ 
+@@ -1994,33 +1935,6 @@
+ 	mutex_unlock(&scmi_list_mutex);
+ 
+ 	return 0;
+-}
+-
+-static bool scmi_device_link_add(struct device *consumer,
+-				 struct device *supplier)
+-{
+-	struct device_link *link;
+-
+-	link = device_link_add(consumer, supplier, DL_FLAG_AUTOREMOVE_CONSUMER);
+-
+-	return !WARN_ON(!link);
+-}
+-
+-static void scmi_clear_handle(struct scmi_device *scmi_dev)
+-{
+-	if (!scmi_dev->handle)
+-		return;
+-
+-	scmi_handle_put(scmi_dev->handle);
+-	scmi_dev->handle = NULL;
+-}
+-
+-static void scmi_set_handle(struct scmi_device *scmi_dev)
+-{
+-	scmi_dev->handle = scmi_handle_get(&scmi_dev->dev);
+-	if (scmi_dev->handle &&
+-	    !scmi_device_link_add(&scmi_dev->dev, scmi_dev->handle->dev))
+-		scmi_clear_handle(scmi_dev);
+ }
+ 
+ static int __scmi_xfer_info_init(struct scmi_info *sinfo,
+@@ -2116,20 +2030,23 @@
+ 	return ret;
+ }
+ 
+-static int scmi_chan_setup(struct scmi_info *info, struct device_node *of_node,
++static int scmi_chan_setup(struct scmi_info *info, struct device *dev,
+ 			   int prot_id, bool tx)
+ {
+ 	int ret, idx;
+-	char name[32];
+ 	struct scmi_chan_info *cinfo;
+ 	struct idr *idr;
+-	struct scmi_device *tdev = NULL;
+ 
+ 	/* Transmit channel is first entry i.e. index 0 */
+ 	idx = tx ? 0 : 1;
+ 	idr = tx ? &info->tx_idr : &info->rx_idr;
+ 
+-	if (!info->desc->ops->chan_available(of_node, idx)) {
++	/* check if already allocated, used for multiple device per protocol */
++	cinfo = idr_find(idr, prot_id);
++	if (cinfo)
++		return 0;
++
++	if (!info->desc->ops->chan_available(dev, idx)) {
+ 		cinfo = idr_find(idr, SCMI_PROTOCOL_BASE);
+ 		if (unlikely(!cinfo)) /* Possible only if platform has no Rx */
+ 			return -EINVAL;
+@@ -2140,77 +2057,50 @@
+ 	if (!cinfo)
+ 		return -ENOMEM;
+ 
++	cinfo->dev = dev;
+ 	cinfo->rx_timeout_ms = info->desc->max_rx_timeout_ms;
+ 
+-	/* Create a unique name for this transport device */
+-	snprintf(name, 32, "__scmi_transport_device_%s_%02X",
+-		 idx ? "rx" : "tx", prot_id);
+-	/* Create a uniquely named, dedicated transport device for this chan */
+-	tdev = scmi_device_create(of_node, info->dev, prot_id, name);
+-	if (!tdev) {
+-		dev_err(info->dev,
+-			"failed to create transport device (%s)\n", name);
+-		devm_kfree(info->dev, cinfo);
+-		return -EINVAL;
+-	}
+-	of_node_get(of_node);
+-
+-	cinfo->id = prot_id;
+-	cinfo->dev = &tdev->dev;
+-	cinfo->handle = &info->handle;
+-
+-	ret = of_property_read_u32(of_node, "arm,max-rx-timeout-ms",
++	ret = of_property_read_u32(dev->of_node, "arm,max-rx-timeout-ms",
+ 				   &cinfo->rx_timeout_ms);
+ 	if (ret && ret != -EINVAL)
+-		dev_err(cinfo->dev, "Malformed arm,max-rx-timeout-ms DT property.\n");
+-
+-	dev_info(cinfo->dev, "SCMI max-rx-timeout: %dms\n",
++		dev_err(dev, "Malformed arm,max-rx-timeout-ms DT property.\n");
++
++	dev_info(dev, "SCMI max-rx-timeout: %dms\n",
+ 		 cinfo->rx_timeout_ms);
++
+ 	ret = info->desc->ops->chan_setup(cinfo, info->dev, tx);
+-	if (ret) {
+-		of_node_put(of_node);
+-		scmi_device_destroy(info->dev, prot_id, name);
+-		devm_kfree(info->dev, cinfo);
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	if (tx && is_polling_required(cinfo, info)) {
+ 		if (is_transport_polling_capable(info))
+-			dev_info(&tdev->dev,
++			dev_info(dev,
+ 				 "Enabled polling mode TX channel - prot_id:%d\n",
+ 				 prot_id);
+ 		else
+-			dev_warn(&tdev->dev,
++			dev_warn(dev,
+ 				 "Polling mode NOT supported by transport.\n");
+ 	}
+ 
+ idr_alloc:
+ 	ret = idr_alloc(idr, cinfo, prot_id, prot_id + 1, GFP_KERNEL);
+ 	if (ret != prot_id) {
+-		dev_err(info->dev,
+-			"unable to allocate SCMI idr slot err %d\n", ret);
+-		/* Destroy channel and device only if created by this call. */
+-		if (tdev) {
+-			info->desc->ops->chan_free(prot_id, cinfo, idr);
+-			of_node_put(of_node);
+-			scmi_device_destroy(info->dev, prot_id, name);
+-			devm_kfree(info->dev, cinfo);
+-		}
++		dev_err(dev, "unable to allocate SCMI idr slot err %d\n", ret);
+ 		return ret;
+ 	}
+ 
++	cinfo->handle = &info->handle;
+ 	return 0;
+ }
+ 
+ static inline int
+-scmi_txrx_setup(struct scmi_info *info, struct device_node *of_node,
+-		int prot_id)
+-{
+-	int ret = scmi_chan_setup(info, of_node, prot_id, true);
++scmi_txrx_setup(struct scmi_info *info, struct device *dev, int prot_id)
++{
++	int ret = scmi_chan_setup(info, dev, prot_id, true);
+ 
+ 	if (!ret) {
+ 		/* Rx is optional, report only memory errors */
+-		ret = scmi_chan_setup(info, of_node, prot_id, false);
++		ret = scmi_chan_setup(info, dev, prot_id, false);
+ 		if (ret && ret != -ENOMEM)
+ 			ret = 0;
+ 	}
+@@ -2219,156 +2109,308 @@
+ }
+ 
+ /**
+- * scmi_channels_setup  - Helper to initialize all required channels
+- *
+- * @info: The SCMI instance descriptor.
+- *
+- * Initialize all the channels found described in the DT against the underlying
+- * configured transport using custom defined dedicated devices instead of
+- * borrowing devices from the SCMI drivers; this way channels are initialized
+- * upfront during core SCMI stack probing and are no more coupled with SCMI
+- * devices used by SCMI drivers.
+- *
+- * Note that, even though a pair of TX/RX channels is associated to each
+- * protocol defined in the DT, a distinct freshly initialized channel is
+- * created only if the DT node for the protocol at hand describes a dedicated
+- * channel: in all the other cases the common BASE protocol channel is reused.
++ * scmi_get_protocol_device  - Helper to get/create an SCMI device.
++ *
++ * @np: A device node representing a valid active protocols for the referred
++ * SCMI instance.
++ * @info: The referred SCMI instance for which we are getting/creating this
++ * device.
++ * @prot_id: The protocol ID.
++ * @name: The device name.
++ *
++ * Referring to the specific SCMI instance identified by @info, this helper
++ * takes care to return a properly initialized device matching the requested
++ * @proto_id and @name: if device was still not existent it is created as a
++ * child of the specified SCMI instance @info and its transport properly
++ * initialized as usual.
++ *
++ * Return: A properly initialized scmi device, NULL otherwise.
++ */
++static inline struct scmi_device *
++scmi_get_protocol_device(struct device_node *np, struct scmi_info *info,
++			 int prot_id, const char *name)
++{
++	struct scmi_device *sdev;
++
++	/* Already created for this parent SCMI instance ? */
++	sdev = scmi_child_dev_find(info->dev, prot_id, name);
++	if (sdev)
++		return sdev;
++
++	mutex_lock(&scmi_syspower_mtx);
++	if (prot_id == SCMI_PROTOCOL_SYSTEM && scmi_syspower_registered) {
++		dev_warn(info->dev,
++			 "SCMI SystemPower protocol device must be unique !\n");
++		mutex_unlock(&scmi_syspower_mtx);
++
++		return NULL;
++	}
++
++	pr_debug("Creating SCMI device (%s) for protocol %x\n", name, prot_id);
++
++	sdev = scmi_device_create(np, info->dev, prot_id, name);
++	if (!sdev) {
++		dev_err(info->dev, "failed to create %d protocol device\n",
++			prot_id);
++		mutex_unlock(&scmi_syspower_mtx);
++
++		return NULL;
++	}
++
++	if (scmi_txrx_setup(info, &sdev->dev, prot_id)) {
++		dev_err(&sdev->dev, "failed to setup transport\n");
++		scmi_device_destroy(sdev);
++		mutex_unlock(&scmi_syspower_mtx);
++
++		return NULL;
++	}
++
++	if (prot_id == SCMI_PROTOCOL_SYSTEM)
++		scmi_syspower_registered = true;
++
++	mutex_unlock(&scmi_syspower_mtx);
++
++	return sdev;
++}
++
++static inline void
++scmi_create_protocol_device(struct device_node *np, struct scmi_info *info,
++			    int prot_id, const char *name)
++{
++	struct scmi_device *sdev;
++
++	sdev = scmi_get_protocol_device(np, info, prot_id, name);
++	if (!sdev)
++		return;
++
++	/* setup handle now as the transport is ready */
++	scmi_set_handle(sdev);
++}
++
++/**
++ * scmi_create_protocol_devices  - Create devices for all pending requests for
++ * this SCMI instance.
++ *
++ * @np: The device node describing the protocol
++ * @info: The SCMI instance descriptor
++ * @prot_id: The protocol ID
++ *
++ * All devices previously requested for this instance (if any) are found and
++ * created by scanning the proper @&scmi_requested_devices entry.
++ */
++static void scmi_create_protocol_devices(struct device_node *np,
++					 struct scmi_info *info, int prot_id)
++{
++	struct list_head *phead;
++
++	mutex_lock(&scmi_requested_devices_mtx);
++	phead = idr_find(&scmi_requested_devices, prot_id);
++	if (phead) {
++		struct scmi_requested_dev *rdev;
++
++		list_for_each_entry(rdev, phead, node)
++			scmi_create_protocol_device(np, info, prot_id,
++						    rdev->id_table->name);
++	}
++	mutex_unlock(&scmi_requested_devices_mtx);
++}
++
++/**
++ * scmi_protocol_device_request  - Helper to request a device
++ *
++ * @id_table: A protocol/name pair descriptor for the device to be created.
++ *
++ * This helper let an SCMI driver request specific devices identified by the
++ * @id_table to be created for each active SCMI instance.
++ *
++ * The requested device name MUST NOT be already existent for any protocol;
++ * at first the freshly requested @id_table is annotated in the IDR table
++ * @scmi_requested_devices, then a matching device is created for each already
++ * active SCMI instance. (if any)
++ *
++ * This way the requested device is created straight-away for all the already
++ * initialized(probed) SCMI instances (handles) and it remains also annotated
++ * as pending creation if the requesting SCMI driver was loaded before some
++ * SCMI instance and related transports were available: when such late instance
++ * is probed, its probe will take care to scan the list of pending requested
++ * devices and create those on its own (see @scmi_create_protocol_devices and
++ * its enclosing loop)
+  *
+  * Return: 0 on Success
+  */
+-static int scmi_channels_setup(struct scmi_info *info)
++int scmi_protocol_device_request(const struct scmi_device_id *id_table)
++{
++	int ret = 0;
++	unsigned int id = 0;
++	struct list_head *head, *phead = NULL;
++	struct scmi_requested_dev *rdev;
++	struct scmi_info *info;
++
++	pr_debug("Requesting SCMI device (%s) for protocol %x\n",
++		 id_table->name, id_table->protocol_id);
++
++	/*
++	 * Search for the matching protocol rdev list and then search
++	 * of any existent equally named device...fails if any duplicate found.
++	 */
++	mutex_lock(&scmi_requested_devices_mtx);
++	idr_for_each_entry(&scmi_requested_devices, head, id) {
++		if (!phead) {
++			/* A list found registered in the IDR is never empty */
++			rdev = list_first_entry(head, struct scmi_requested_dev,
++						node);
++			if (rdev->id_table->protocol_id ==
++			    id_table->protocol_id)
++				phead = head;
++		}
++		list_for_each_entry(rdev, head, node) {
++			if (!strcmp(rdev->id_table->name, id_table->name)) {
++				pr_err("Ignoring duplicate request [%d] %s\n",
++				       rdev->id_table->protocol_id,
++				       rdev->id_table->name);
++				ret = -EINVAL;
++				goto out;
++			}
++		}
++	}
++
++	/*
++	 * No duplicate found for requested id_table, so let's create a new
++	 * requested device entry for this new valid request.
++	 */
++	rdev = kzalloc(sizeof(*rdev), GFP_KERNEL);
++	if (!rdev) {
++		ret = -ENOMEM;
++		goto out;
++	}
++	rdev->id_table = id_table;
++
++	/*
++	 * Append the new requested device table descriptor to the head of the
++	 * related protocol list, eventually creating such head if not already
++	 * there.
++	 */
++	if (!phead) {
++		phead = kzalloc(sizeof(*phead), GFP_KERNEL);
++		if (!phead) {
++			kfree(rdev);
++			ret = -ENOMEM;
++			goto out;
++		}
++		INIT_LIST_HEAD(phead);
++
++		ret = idr_alloc(&scmi_requested_devices, (void *)phead,
++				id_table->protocol_id,
++				id_table->protocol_id + 1, GFP_KERNEL);
++		if (ret != id_table->protocol_id) {
++			pr_err("Failed to save SCMI device - ret:%d\n", ret);
++			kfree(rdev);
++			kfree(phead);
++			ret = -EINVAL;
++			goto out;
++		}
++		ret = 0;
++	}
++	list_add(&rdev->node, phead);
++
++	/*
++	 * Now effectively create and initialize the requested device for every
++	 * already initialized SCMI instance which has registered the requested
++	 * protocol as a valid active one: i.e. defined in DT and supported by
++	 * current platform FW.
++	 */
++	mutex_lock(&scmi_list_mutex);
++	list_for_each_entry(info, &scmi_list, node) {
++		struct device_node *child;
++
++		child = idr_find(&info->active_protocols,
++				 id_table->protocol_id);
++		if (child) {
++			struct scmi_device *sdev;
++
++			sdev = scmi_get_protocol_device(child, info,
++							id_table->protocol_id,
++							id_table->name);
++			if (sdev) {
++				/* Set handle if not already set: device existed */
++				if (!sdev->handle)
++					sdev->handle =
++						scmi_handle_get_from_info_unlocked(info);
++				/* Relink consumer and suppliers */
++				if (sdev->handle)
++					scmi_device_link_add(&sdev->dev,
++							     sdev->handle->dev);
++			}
++		} else {
++			dev_err(info->dev,
++				"Failed. SCMI protocol %d not active.\n",
++				id_table->protocol_id);
++		}
++	}
++	mutex_unlock(&scmi_list_mutex);
++
++out:
++	mutex_unlock(&scmi_requested_devices_mtx);
++
++	return ret;
++}
++
++/**
++ * scmi_protocol_device_unrequest  - Helper to unrequest a device
++ *
++ * @id_table: A protocol/name pair descriptor for the device to be unrequested.
++ *
++ * An helper to let an SCMI driver release its request about devices; note that
++ * devices are created and initialized once the first SCMI driver request them
++ * but they destroyed only on SCMI core unloading/unbinding.
++ *
++ * The current SCMI transport layer uses such devices as internal references and
++ * as such they could be shared as same transport between multiple drivers so
++ * that cannot be safely destroyed till the whole SCMI stack is removed.
++ * (unless adding further burden of refcounting.)
++ */
++void scmi_protocol_device_unrequest(const struct scmi_device_id *id_table)
++{
++	struct list_head *phead;
++
++	pr_debug("Unrequesting SCMI device (%s) for protocol %x\n",
++		 id_table->name, id_table->protocol_id);
++
++	mutex_lock(&scmi_requested_devices_mtx);
++	phead = idr_find(&scmi_requested_devices, id_table->protocol_id);
++	if (phead) {
++		struct scmi_requested_dev *victim, *tmp;
++
++		list_for_each_entry_safe(victim, tmp, phead, node) {
++			if (!strcmp(victim->id_table->name, id_table->name)) {
++				list_del(&victim->node);
++				kfree(victim);
++				break;
++			}
++		}
++
++		if (list_empty(phead)) {
++			idr_remove(&scmi_requested_devices,
++				   id_table->protocol_id);
++			kfree(phead);
++		}
++	}
++	mutex_unlock(&scmi_requested_devices_mtx);
++}
++
++static int scmi_cleanup_txrx_channels(struct scmi_info *info)
+ {
+ 	int ret;
+-	struct device_node *child, *top_np = info->dev->of_node;
+-
+-	/* Initialize a common generic channel at first */
+-	ret = scmi_txrx_setup(info, top_np, SCMI_PROTOCOL_BASE);
+-	if (ret)
+-		return ret;
+-
+-	for_each_available_child_of_node(top_np, child) {
+-		u32 prot_id;
+-
+-		if (of_property_read_u32(child, "reg", &prot_id))
+-			continue;
+-
+-		if (!FIELD_FIT(MSG_PROTOCOL_ID_MASK, prot_id)) {
+-			dev_err(info->dev,
+-				"Out of range protocol %d\n", prot_id);
+-			continue;
+-		}
+-
+-		ret = scmi_txrx_setup(info, child, prot_id);
+-		if (ret) {
+-			of_node_put(child);
+-			return ret;
+-		}
+-	}
+-
+-	return 0;
+-}
+-
+-static int scmi_chan_destroy(int id, void *p, void *data)
+-{
+-	struct scmi_chan_info *cinfo = p;
+-
+-	if (cinfo->dev) {
+-		struct scmi_info *info = handle_to_scmi_info(cinfo->handle);
+-		struct scmi_device *sdev = to_scmi_dev(cinfo->dev);
+-
+-		of_node_put(cinfo->dev->of_node);
+-		scmi_device_destroy(info->dev, cinfo->id, sdev->name);
+-		cinfo->dev = NULL;
+-	}
+-
+-	return 0;
+-}
+-
+-static void scmi_cleanup_channels(struct scmi_info *info, struct idr *idr)
+-{
+-	/* At first free all channels at the transport layer ... */
+-	idr_for_each(idr, info->desc->ops->chan_free, idr);
+-
+-	/* ...then destroy all underlying devices */
+-	idr_for_each(idr, scmi_chan_destroy, idr);
+-
+-	idr_destroy(idr);
+-}
+-
+-static void scmi_cleanup_txrx_channels(struct scmi_info *info)
+-{
+-	scmi_cleanup_channels(info, &info->tx_idr);
+-
+-	scmi_cleanup_channels(info, &info->rx_idr);
+-}
+-
+-static int scmi_bus_notifier(struct notifier_block *nb,
+-			     unsigned long action, void *data)
+-{
+-	struct scmi_info *info = bus_nb_to_scmi_info(nb);
+-	struct scmi_device *sdev = to_scmi_dev(data);
+-	const char *status;
+-
+-	/* Skip transport devices and devices of different SCMI instances */
+-	if (!strncmp(sdev->name, "__scmi_transport_device", 23) ||
+-	    sdev->dev.parent != info->dev)
+-		return NOTIFY_DONE;
+-
+-	switch (action) {
+-	case BUS_NOTIFY_BIND_DRIVER:
+-		/* setup handle now as the transport is ready */
+-		scmi_set_handle(sdev);
+-		status = "about to be BOUND.";
+-		break;
+-	case BUS_NOTIFY_DRIVER_NOT_BOUND:
+-		scmi_clear_handle(sdev);
+-		status = "NOT BOUND.";
+-		break;
+-	case BUS_NOTIFY_UNBOUND_DRIVER:
+-		scmi_clear_handle(sdev);
+-		status = "UNBOUND.";
+-		break;
+-	default:
+-		return NOTIFY_DONE;
+-	}
+-
+-	dev_dbg(info->dev, "Device %s (%s) is now %s\n", dev_name(&sdev->dev),
+-		sdev->name, status);
+-
+-	return NOTIFY_OK;
+-}
+-
+-static int scmi_device_request_notifier(struct notifier_block *nb,
+-					unsigned long action, void *data)
+-{
+-	struct device_node *np;
+-	struct scmi_device_id *id_table = data;
+-	struct scmi_info *info = req_nb_to_scmi_info(nb);
+-
+-	rcu_read_lock();
+-	np = idr_find(&info->active_protocols, id_table->protocol_id);
+-	rcu_read_unlock();
+-	if (!np)
+-		return NOTIFY_DONE;
+-
+-	dev_dbg(info->dev, "%sRequested device (%s) for protocol 0x%x\n",
+-		action == SCMI_BUS_NOTIFY_DEVICE_REQUEST ? "" : "UN-",
+-		id_table->name, id_table->protocol_id);
+-
+-	switch (action) {
+-	case SCMI_BUS_NOTIFY_DEVICE_REQUEST:
+-		scmi_create_protocol_devices(np, info, id_table->protocol_id,
+-					     id_table->name);
+-		break;
+-	case SCMI_BUS_NOTIFY_DEVICE_UNREQUEST:
+-		scmi_destroy_protocol_devices(info, id_table->protocol_id,
+-					      id_table->name);
+-		break;
+-	default:
+-		return NOTIFY_DONE;
+-	}
+-
+-	return NOTIFY_OK;
++	struct idr *idr = &info->tx_idr;
++
++	ret = idr_for_each(idr, info->desc->ops->chan_free, idr);
++	idr_destroy(&info->tx_idr);
++
++	idr = &info->rx_idr;
++	ret = idr_for_each(idr, info->desc->ops->chan_free, idr);
++	idr_destroy(&info->rx_idr);
++
++	return ret;
+ }
+ 
+ static int scmi_probe(struct platform_device *pdev)
+@@ -2388,19 +2430,12 @@
+ 	if (!info)
+ 		return -ENOMEM;
+ 
+-	info->id = ida_alloc_min(&scmi_id, 0, GFP_KERNEL);
+-	if (info->id < 0)
+-		return info->id;
+-
+ 	info->dev = dev;
+ 	info->desc = desc;
+-	info->bus_nb.notifier_call = scmi_bus_notifier;
+-	info->dev_req_nb.notifier_call = scmi_device_request_notifier;
+ 	INIT_LIST_HEAD(&info->node);
+ 	idr_init(&info->protocols);
+ 	mutex_init(&info->protocols_mtx);
+ 	idr_init(&info->active_protocols);
+-	mutex_init(&info->devreq_mtx);
+ 
+ 	platform_set_drvdata(pdev, info);
+ 	idr_init(&info->tx_idr);
+@@ -2424,26 +2459,16 @@
+ 	if (desc->ops->link_supplier) {
+ 		ret = desc->ops->link_supplier(dev);
+ 		if (ret)
+-			goto clear_ida;
+-	}
+-
+-	/* Setup all channels described in the DT at first */
+-	ret = scmi_channels_setup(info);
++			return ret;
++	}
++
++	ret = scmi_txrx_setup(info, dev, SCMI_PROTOCOL_BASE);
+ 	if (ret)
+-		goto clear_ida;
+-
+-	ret = bus_register_notifier(&scmi_bus_type, &info->bus_nb);
++		return ret;
++
++	ret = scmi_xfer_info_init(info);
+ 	if (ret)
+ 		goto clear_txrx_setup;
+-
+-	ret = blocking_notifier_chain_register(&scmi_requested_devices_nh,
+-					       &info->dev_req_nb);
+-	if (ret)
+-		goto clear_bus_notifier;
+-
+-	ret = scmi_xfer_info_init(info);
+-	if (ret)
+-		goto clear_dev_req_notifier;
+ 
+ 	if (scmi_notification_init(handle))
+ 		dev_err(dev, "SCMI Notifications NOT available.\n");
+@@ -2473,10 +2498,8 @@
+ 		if (of_property_read_u32(child, "reg", &prot_id))
+ 			continue;
+ 
+-		if (!FIELD_FIT(MSG_PROTOCOL_ID_MASK, prot_id)) {
++		if (!FIELD_FIT(MSG_PROTOCOL_ID_MASK, prot_id))
+ 			dev_err(dev, "Out of range protocol %d\n", prot_id);
+-			continue;
+-		}
+ 
+ 		if (!scmi_is_protocol_implemented(handle, prot_id)) {
+ 			dev_err(dev, "SCMI protocol %d not implemented\n",
+@@ -2497,28 +2520,26 @@
+ 		}
+ 
+ 		of_node_get(child);
+-		scmi_create_protocol_devices(child, info, prot_id, NULL);
++		scmi_create_protocol_devices(child, info, prot_id);
+ 	}
+ 
+ 	return 0;
+ 
+ notification_exit:
+ 	scmi_notification_exit(&info->handle);
+-clear_dev_req_notifier:
+-	blocking_notifier_chain_unregister(&scmi_requested_devices_nh,
+-					   &info->dev_req_nb);
+-clear_bus_notifier:
+-	bus_unregister_notifier(&scmi_bus_type, &info->bus_nb);
+ clear_txrx_setup:
+ 	scmi_cleanup_txrx_channels(info);
+-clear_ida:
+-	ida_free(&scmi_id, info->id);
+ 	return ret;
+ }
+ 
++void scmi_free_channel(struct scmi_chan_info *cinfo, struct idr *idr, int id)
++{
++	idr_remove(idr, id);
++}
++
+ static int scmi_remove(struct platform_device *pdev)
+ {
+-	int id;
++	int ret, id;
+ 	struct scmi_info *info = platform_get_drvdata(pdev);
+ 	struct device_node *child;
+ 
+@@ -2529,9 +2550,6 @@
+ 	list_del(&info->node);
+ 	mutex_unlock(&scmi_list_mutex);
+ 
+-	blocking_notifier_chain_unregister(&scmi_requested_devices_nh,
+-					   &info->dev_req_nb);
+-
+ 	scmi_notification_exit(&info->handle);
+ 
+ 	mutex_lock(&info->protocols_mtx);
+@@ -2542,12 +2560,10 @@
+ 		of_node_put(child);
+ 	idr_destroy(&info->active_protocols);
+ 
+-	bus_unregister_notifier(&scmi_bus_type, &info->bus_nb);
+-
+ 	/* Safe to free channels since no more users */
+-	scmi_cleanup_txrx_channels(info);
+-
+-	ida_free(&scmi_id, info->id);
++	ret = scmi_cleanup_txrx_channels(info);
++	if (ret)
++		dev_warn(&pdev->dev, "Failed to cleanup SCMI channels.\n");
+ 
+ 	return 0;
+ }
+--- a/include/linux/scmi_protocol.h
++++ b/include/linux/scmi_protocol.h
+@@ -829,6 +829,11 @@
+ 
+ #define to_scmi_dev(d) container_of(d, struct scmi_device, dev)
+ 
++struct scmi_device *
++scmi_device_create(struct device_node *np, struct device *parent, int protocol,
++		   const char *name);
++void scmi_device_destroy(struct scmi_device *scmi_dev);
++
+ struct scmi_device_id {
+ 	u8 protocol_id;
+ 	const char *name;
+--- a/drivers/char/hw_random/core.c
++++ b/drivers/char/hw_random/core.c
+@@ -22,24 +22,22 @@
+ #include <linux/miscdevice.h>
+ #include <linux/module.h>
+ #include <linux/random.h>
+-#include <linux/rcupdate.h>
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+ #include <linux/string.h>
+ #include <linux/uaccess.h>
+-#include <linux/workqueue.h>
+ 
+ #define RNG_MODULE_NAME		"hw_random"
+ 
+ #define RNG_BUFFER_SIZE (SMP_CACHE_BYTES < 32 ? 32 : SMP_CACHE_BYTES)
+ 
+-static struct hwrng __rcu *current_rng;
++static struct hwrng *current_rng;
+ /* the current rng has been explicitly chosen by user via sysfs */
+ static int cur_rng_set_by_user;
+ static struct task_struct *hwrng_fill;
+ /* list of registered rngs */
+ static LIST_HEAD(rng_list);
+-/* Protects rng_list, hwrng_fill and updating on current_rng */
++/* Protects rng_list and current_rng */
+ static DEFINE_MUTEX(rng_mutex);
+ /* Protects rng read functions, data_avail, rng_buffer and rng_fillbuf */
+ static DEFINE_MUTEX(reading_mutex);
+@@ -78,39 +76,18 @@
+ 		add_device_randomness(rng_fillbuf, bytes_read);
+ }
+ 
+-static void cleanup_rng_work(struct work_struct *work)
+-{
+-	struct hwrng *rng = container_of(work, struct hwrng, cleanup_work);
+-
+-	/*
+-	 * Hold rng_mutex here so we serialize in case they set_current_rng
+-	 * on rng again immediately.
+-	 */
+-	mutex_lock(&rng_mutex);
+-
+-	/* Skip if rng has been reinitialized. */
+-	if (kref_read(&rng->ref)) {
+-		mutex_unlock(&rng_mutex);
+-		return;
+-	}
++static inline void cleanup_rng(struct kref *kref)
++{
++	struct hwrng *rng = container_of(kref, struct hwrng, ref);
+ 
+ 	if (rng->cleanup)
+ 		rng->cleanup(rng);
+ 
+ 	complete(&rng->cleanup_done);
+-	mutex_unlock(&rng_mutex);
+-}
+-
+-static inline void cleanup_rng(struct kref *kref)
+-{
+-	struct hwrng *rng = container_of(kref, struct hwrng, ref);
+-
+-	schedule_work(&rng->cleanup_work);
+ }
+ 
+ static int set_current_rng(struct hwrng *rng)
+ {
+-	struct hwrng *old_rng;
+ 	int err;
+ 
+ 	BUG_ON(!mutex_is_locked(&rng_mutex));
+@@ -119,14 +96,8 @@
+ 	if (err)
+ 		return err;
+ 
+-	old_rng = rcu_dereference_protected(current_rng,
+-					    lockdep_is_held(&rng_mutex));
+-	rcu_assign_pointer(current_rng, rng);
+-
+-	if (old_rng) {
+-		synchronize_rcu();
+-		kref_put(&old_rng->ref, cleanup_rng);
+-	}
++	drop_current_rng();
++	current_rng = rng;
+ 
+ 	/* if necessary, start hwrng thread */
+ 	if (!hwrng_fill) {
+@@ -142,56 +113,47 @@
+ 
+ static void drop_current_rng(void)
+ {
++	BUG_ON(!mutex_is_locked(&rng_mutex));
++	if (!current_rng)
++		return;
++
++	/* decrease last reference for triggering the cleanup */
++	kref_put(&current_rng->ref, cleanup_rng);
++	current_rng = NULL;
++}
++
++/* Returns ERR_PTR(), NULL or refcounted hwrng */
++static struct hwrng *get_current_rng_nolock(void)
++{
++	if (current_rng)
++		kref_get(&current_rng->ref);
++
++	return current_rng;
++}
++
++static struct hwrng *get_current_rng(void)
++{
+ 	struct hwrng *rng;
+ 
+-	rng = rcu_dereference_protected(current_rng,
+-					lockdep_is_held(&rng_mutex));
+-	if (!rng)
+-		return;
+-
+-	RCU_INIT_POINTER(current_rng, NULL);
+-	synchronize_rcu();
+-
+-	if (hwrng_fill) {
+-		kthread_stop(hwrng_fill);
+-		hwrng_fill = NULL;
+-	}
+-
+-	/* decrease last reference for triggering the cleanup */
+-	kref_put(&rng->ref, cleanup_rng);
+-}
+-
+-/* Returns NULL or refcounted hwrng */
+-static struct hwrng *get_current_rng_nolock(void)
+-{
+-	struct hwrng *rng;
+-
+-	rng = rcu_dereference_protected(current_rng,
+-					lockdep_is_held(&rng_mutex));
+-	if (rng)
+-		kref_get(&rng->ref);
+-
++	if (mutex_lock_interruptible(&rng_mutex))
++		return ERR_PTR(-ERESTARTSYS);
++
++	rng = get_current_rng_nolock();
++
++	mutex_unlock(&rng_mutex);
+ 	return rng;
+ }
+ 
+-static struct hwrng *get_current_rng(void)
+-{
+-	struct hwrng *rng;
+-
+-	rcu_read_lock();
+-	rng = rcu_dereference(current_rng);
+-	if (rng)
+-		kref_get(&rng->ref);
+-
+-	rcu_read_unlock();
+-
+-	return rng;
+-}
+-
+ static void put_rng(struct hwrng *rng)
+ {
++	/*
++	 * Hold rng_mutex here so we serialize in case they set_current_rng
++	 * on rng again immediately.
++	 */
++	mutex_lock(&rng_mutex);
+ 	if (rng)
+ 		kref_put(&rng->ref, cleanup_rng);
++	mutex_unlock(&rng_mutex);
+ }
+ 
+ static int hwrng_init(struct hwrng *rng)
+@@ -260,6 +222,10 @@
+ 
+ 	while (size) {
+ 		rng = get_current_rng();
++		if (IS_ERR(rng)) {
++			err = PTR_ERR(rng);
++			goto out;
++		}
+ 		if (!rng) {
+ 			err = -ENODEV;
+ 			goto out;
+@@ -346,7 +312,7 @@
+ 
+ static int enable_best_rng(void)
+ {
+-	struct hwrng *rng, *cur_rng, *new_rng = NULL;
++	struct hwrng *rng, *new_rng = NULL;
+ 	int ret = -ENODEV;
+ 
+ 	BUG_ON(!mutex_is_locked(&rng_mutex));
+@@ -364,9 +330,7 @@
+ 			new_rng = rng;
+ 	}
+ 
+-	cur_rng = rcu_dereference_protected(current_rng,
+-					    lockdep_is_held(&rng_mutex));
+-	ret = ((new_rng == cur_rng) ? 0 : set_current_rng(new_rng));
++	ret = ((new_rng == current_rng) ? 0 : set_current_rng(new_rng));
+ 	if (!ret)
+ 		cur_rng_set_by_user = 0;
+ 
+@@ -417,6 +381,8 @@
+ 	struct hwrng *rng;
+ 
+ 	rng = get_current_rng();
++	if (IS_ERR(rng))
++		return PTR_ERR(rng);
+ 
+ 	ret = snprintf(buf, PAGE_SIZE, "%s\n", rng ? rng->name : "none");
+ 	put_rng(rng);
+@@ -460,6 +426,8 @@
+ 	struct hwrng *rng;
+ 
+ 	rng = get_current_rng();
++	if (IS_ERR(rng))
++		return PTR_ERR(rng);
+ 
+ 	if (!rng) /* no need to put_rng */
+ 		return -ENODEV;
+@@ -474,7 +442,6 @@
+ 				 struct device_attribute *attr,
+ 				 const char *buf, size_t len)
+ {
+-	struct hwrng *rng;
+ 	u16 quality;
+ 	int ret = -EINVAL;
+ 
+@@ -491,13 +458,12 @@
+ 		goto out;
+ 	}
+ 
+-	rng = rcu_dereference_protected(current_rng, lockdep_is_held(&rng_mutex));
+-	if (!rng) {
++	if (!current_rng) {
+ 		ret = -ENODEV;
+ 		goto out;
+ 	}
+ 
+-	rng->quality = quality;
++	current_rng->quality = quality;
+ 	current_quality = quality; /* obsolete */
+ 
+ 	/* the best available RNG may have changed */
+@@ -543,20 +509,8 @@
+ 		struct hwrng *rng;
+ 
+ 		rng = get_current_rng();
+-		if (!rng) {
+-			/*
+-			 * Keep the task_struct alive until kthread_stop()
+-			 * is called to avoid UAF in drop_current_rng().
+-			 */
+-			while (!kthread_should_stop()) {
+-				set_current_state(TASK_INTERRUPTIBLE);
+-				if (!kthread_should_stop())
+-					schedule();
+-			}
+-			set_current_state(TASK_RUNNING);
++		if (IS_ERR(rng) || !rng)
+ 			break;
+-		}
+-
+ 		mutex_lock(&reading_mutex);
+ 		rc = rng_get_data(rng, rng_fillbuf,
+ 				  rng_buffer_size(), 1);
+@@ -584,13 +538,14 @@
+ 		add_hwgenerator_randomness((void *)rng_fillbuf, rc,
+ 					   entropy >> 10);
+ 	}
++	hwrng_fill = NULL;
+ 	return 0;
+ }
+ 
+ int hwrng_register(struct hwrng *rng)
+ {
+ 	int err = -EINVAL;
+-	struct hwrng *cur_rng, *tmp;
++	struct hwrng *tmp;
+ 	bool is_new_current = false;
+ 
+ 	if (!rng->name || (!rng->data_read && !rng->read))
+@@ -606,15 +561,12 @@
+ 	}
+ 	list_add_tail(&rng->list, &rng_list);
+ 
+-	INIT_WORK(&rng->cleanup_work, cleanup_rng_work);
+ 	init_completion(&rng->cleanup_done);
+ 	complete(&rng->cleanup_done);
+ 	init_completion(&rng->dying);
+ 
+-	cur_rng = rcu_dereference_protected(current_rng,
+-					    lockdep_is_held(&rng_mutex));
+-	if (!cur_rng ||
+-	    (!cur_rng_set_by_user && rng->quality > cur_rng->quality)) {
++	if (!current_rng ||
++	    (!cur_rng_set_by_user && rng->quality > current_rng->quality)) {
+ 		/*
+ 		 * Set new rng as current as the new rng source
+ 		 * provides better entropy quality and was not
+@@ -622,7 +574,7 @@
+ 		 */
+ 		err = set_current_rng(rng);
+ 		if (err)
+-			goto out_list_del;
++			goto out_unlock;
+ 		/* to use current_rng in add_early_randomness() we need
+ 		 * to take a ref
+ 		 */
+@@ -643,8 +595,6 @@
+ 	if (is_new_current)
+ 		put_rng(rng);
+ 	return 0;
+-out_list_del:
+-	list_del_init(&rng->list);
+ out_unlock:
+ 	mutex_unlock(&rng_mutex);
+ out:
+@@ -654,19 +604,15 @@
+ 
+ void hwrng_unregister(struct hwrng *rng)
+ {
+-	struct hwrng *cur_rng, *old_rng, *new_rng;
++	struct hwrng *old_rng, *new_rng;
+ 	int err;
+ 
+ 	mutex_lock(&rng_mutex);
+ 
+-	old_rng = rcu_dereference_protected(current_rng,
+-					    lockdep_is_held(&rng_mutex));
++	old_rng = current_rng;
+ 	list_del(&rng->list);
+ 	complete_all(&rng->dying);
+-
+-	cur_rng = rcu_dereference_protected(current_rng,
+-					    lockdep_is_held(&rng_mutex));
+-	if (cur_rng == rng) {
++	if (current_rng == rng) {
+ 		err = enable_best_rng();
+ 		if (err) {
+ 			drop_current_rng();
+@@ -675,7 +621,12 @@
+ 	}
+ 
+ 	new_rng = get_current_rng_nolock();
+-	mutex_unlock(&rng_mutex);
++	if (list_empty(&rng_list)) {
++		mutex_unlock(&rng_mutex);
++		if (hwrng_fill)
++			kthread_stop(hwrng_fill);
++	} else
++		mutex_unlock(&rng_mutex);
+ 
+ 	if (new_rng) {
+ 		if (old_rng != new_rng)
+@@ -770,7 +721,7 @@
+ static void __exit hwrng_modexit(void)
+ {
+ 	mutex_lock(&rng_mutex);
+-	WARN_ON(rcu_access_pointer(current_rng));
++	BUG_ON(current_rng);
+ 	kfree(rng_buffer);
+ 	kfree(rng_fillbuf);
+ 	mutex_unlock(&rng_mutex);
+--- a/include/linux/hw_random.h
++++ b/include/linux/hw_random.h
+@@ -16,7 +16,6 @@
+ #include <linux/types.h>
+ #include <linux/list.h>
+ #include <linux/kref.h>
+-#include <linux/workqueue.h>
+ 
+ /**
+  * struct hwrng - Hardware Random Number Generator driver
+@@ -50,7 +49,6 @@
+ 	/* internal. */
+ 	struct list_head list;
+ 	struct kref ref;
+-	struct work_struct cleanup_work;
+ 	struct completion cleanup_done;
+ 	struct completion dying;
+ };
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -586,18 +586,11 @@
+ 	ret = -EBUSY;
+ 
+ 	if (keyring) {
++		if (keyring->restrict_link)
++			return -EPERM;
++
+ 		link_ret = __key_link_lock(keyring, &key->index_key);
+ 		if (link_ret == 0) {
+-			/*
+-			 * Check the restriction under the keyring semaphore.
+-			 * keyring_restrict() installs it while holding the
+-			 * semaphore, so testing it beforehand races with a
+-			 * concurrent restriction install.
+-			 */
+-			if (keyring->restrict_link) {
+-				__key_link_end(keyring, &key->index_key, edit);
+-				return -EPERM;
+-			}
+ 			link_ret = __key_link_begin(keyring, &key->index_key, &edit);
+ 			if (link_ret < 0)
+ 				__key_link_end(keyring, &key->index_key, edit);
+@@ -851,6 +844,9 @@
+ 	keyring = key_ref_to_ptr(keyring_ref);
+ 
+ 	key_check(keyring);
++
++	if (!(flags & KEY_ALLOC_BYPASS_RESTRICTION))
++		restrict_link = keyring->restrict_link;
+ 
+ 	key_ref = ERR_PTR(-ENOTDIR);
+ 	if (keyring->type != &key_type_keyring)
+@@ -889,9 +885,6 @@
+ 		goto error_link_end;
+ 	}
+ 
+-	if (!(flags & KEY_ALLOC_BYPASS_RESTRICTION))
+-		restrict_link = keyring->restrict_link;
+-
+ 	if (restrict_link && restrict_link->check) {
+ 		ret = restrict_link->check(keyring, index_key.type,
+ 					   &prep.payload, restrict_link->key);
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -14,9 +14,6 @@
+ #include <linux/err.h>
+ #include <linux/user_namespace.h>
+ #include <linux/nsproxy.h>
+-#include <linux/once.h>
+-#include <linux/random.h>
+-#include <linux/siphash.h>
+ #include <keys/keyring-type.h>
+ #include <keys/user-type.h>
+ #include <linux/assoc_array_priv.h>
+@@ -150,46 +147,49 @@
+ }
+ 
+ /*
+- * Give key types and domains address-independent identities.  Zero means that
+- * an ID has not yet been allocated.  As with inode sequence numbers used by
+- * futexes, this relies on the 64-bit counter not wrapping in a machine's
+- * lifetime.
+- */
+-static u64 key_index_id(atomic64_t *id)
+-{
+-	static atomic64_t next_id;
+-	u64 old, new;
+-
+-	old = atomic64_read(id);
+-	if (likely(old))
+-		return old;
+-
+-	do {
+-		new = atomic64_inc_return(&next_id);
+-	} while (WARN_ON_ONCE(!new));
+-
+-	old = 0;
+-	if (!atomic64_try_cmpxchg_relaxed(id, &old, new))
+-		return old;
+-	return new;
+-}
+-
+-/*
+- * Hash a key type, domain and description.  KEYCTL_READ exposes the tree's
+- * traversal order, so no part of the index may contain kernel addresses.
++ * Multiply 64-bits by 32-bits to 96-bits and fold back to 64-bit.  Ideally we'd
++ * fold the carry back too, but that requires inline asm.
++ */
++static u64 mult_64x32_and_fold(u64 x, u32 y)
++{
++	u64 hi = (u64)(u32)(x >> 32) * y;
++	u64 lo = (u64)(u32)(x) * y;
++	return lo + ((u64)(u32)hi << 32) + (u32)(hi >> 32);
++}
++
++/*
++ * Hash a key type and description.
+  */
+ static void hash_key_type_and_desc(struct keyring_index_key *index_key)
+ {
+ 	const unsigned level_shift = ASSOC_ARRAY_LEVEL_STEP;
+ 	const unsigned long fan_mask = ASSOC_ARRAY_FAN_MASK;
+-	static siphash_key_t hash_key __read_mostly;
+-	unsigned long hash;
++	const char *description = index_key->description;
++	unsigned long hash, type;
++	u32 piece;
+ 	u64 acc;
+-
+-	get_random_once(&hash_key, sizeof(hash_key));
+-	acc = siphash(index_key->description, index_key->desc_len, &hash_key);
+-	acc = siphash_3u64(index_key->type_id, index_key->domain_id, acc,
+-			   &hash_key);
++	int n, desc_len = index_key->desc_len;
++
++	type = (unsigned long)index_key->type;
++	acc = mult_64x32_and_fold(type, desc_len + 13);
++	acc = mult_64x32_and_fold(acc, 9207);
++	piece = (unsigned long)index_key->domain_tag;
++	acc = mult_64x32_and_fold(acc, piece);
++	acc = mult_64x32_and_fold(acc, 9207);
++
++	for (;;) {
++		n = desc_len;
++		if (n <= 0)
++			break;
++		if (n > 4)
++			n = 4;
++		piece = 0;
++		memcpy(&piece, description, n);
++		description += n;
++		desc_len -= n;
++		acc = mult_64x32_and_fold(acc, piece);
++		acc = mult_64x32_and_fold(acc, 9207);
++	}
+ 
+ 	/* Fold the hash down to 32 bits if need be. */
+ 	hash = acc;
+@@ -209,7 +209,7 @@
+ 
+ /*
+  * Finalise an index key to include a part of the description actually in the
+- * index key, to set the domain tag and index IDs, and to calculate the hash.
++ * index key, to set the domain tag and to calculate the hash.
+  */
+ void key_set_index_key(struct keyring_index_key *index_key)
+ {
+@@ -225,14 +225,6 @@
+ 			index_key->domain_tag = &default_domain_tag;
+ 	}
+ 
+-	/* Preserve the IDs when copying an existing key's index.  In
+-	 * particular, its type may already have been unregistered.
+-	 */
+-	if (!index_key->type_id)
+-		index_key->type_id = key_index_id(&index_key->type->index_id);
+-	if (!index_key->domain_id)
+-		index_key->domain_id = key_index_id(&index_key->domain_tag->index_id);
+-
+ 	hash_key_type_and_desc(index_key);
+ }
+ 
+@@ -271,19 +263,15 @@
+ /*
+  * Build the next index key chunk.
+  *
+- * The hash and inline description are followed by the 64-bit type and domain
+- * IDs, low word first, and then by the rest of the description.
+  * We return it one word-sized chunk at a time.
+  */
+ static unsigned long keyring_get_key_chunk(const void *data, int level)
+ {
+-	const unsigned int id_chunks = sizeof(u64) / sizeof(unsigned long);
+ 	const struct keyring_index_key *index_key = data;
+-	int desc_len = index_key->desc_len;
+ 	unsigned long chunk = 0;
+-	int n = sizeof(chunk);
++	const u8 *d;
++	int desc_len = index_key->desc_len, n = sizeof(chunk);
+ 	unsigned int offset;
+-	const u8 *d;
+ 
+ 	level /= ASSOC_ARRAY_KEY_CHUNK_SIZE;
+ 	switch (level) {
+@@ -291,30 +279,27 @@
+ 		return index_key->hash;
+ 	case 1:
+ 		return index_key->x;
+-	}
+-
+-	level -= 2;
+-	if (level < id_chunks)
+-		return index_key->type_id >> (level * ASSOC_ARRAY_KEY_CHUNK_SIZE);
+-	level -= id_chunks;
+-	if (level < id_chunks)
+-		return index_key->domain_id >> (level * ASSOC_ARRAY_KEY_CHUNK_SIZE);
+-	level -= id_chunks;
+-
+-	offset = sizeof(index_key->desc) + level * sizeof(long);
+-	if (desc_len <= offset)
+-		return 0;
+-
+-	d = index_key->description + offset;
+-	desc_len -= offset;
+-	if (desc_len > n)
+-		desc_len = n;
+-	d += desc_len;
+-	do {
+-		chunk <<= 8;
+-		chunk |= *--d;
+-	} while (--desc_len > 0);
+-	return chunk;
++	case 2:
++		return (unsigned long)index_key->type;
++	case 3:
++		return (unsigned long)index_key->domain_tag;
++	default:
++		level -= 4;
++		offset = sizeof(index_key->desc) + level * sizeof(long);
++		if (desc_len <= offset)
++			return 0;
++
++		d = index_key->description + offset;
++		desc_len -= offset;
++		if (desc_len > n)
++			desc_len = n;
++		d += desc_len;
++		do {
++			chunk <<= 8;
++			chunk |= *--d;
++		} while (--desc_len > 0);
++		return chunk;
++	}
+ }
+ 
+ static unsigned long keyring_get_object_key_chunk(const void *object, int level)
+@@ -346,7 +331,6 @@
+ 	const struct keyring_index_key *b = data;
+ 	unsigned long seg_a, seg_b;
+ 	int level, i;
+-	u64 diff;
+ 
+ 	level = 0;
+ 	seg_a = a->hash;
+@@ -355,22 +339,28 @@
+ 		goto differ;
+ 	level += ASSOC_ARRAY_KEY_CHUNK_SIZE / 8;
+ 
+-	/* The inline description contributes one machine-word-sized chunk. */
++	/* The number of bits contributed by the hash is controlled by a
++	 * constant in the assoc_array headers.  Everything else thereafter we
++	 * can deal with as being machine word-size dependent.
++	 */
+ 	seg_a = a->x;
+ 	seg_b = b->x;
+ 	if ((seg_a ^ seg_b) != 0)
+ 		goto differ;
+ 	level += sizeof(unsigned long);
+ 
+-	diff = a->type_id ^ b->type_id;
+-	if (diff)
+-		return level * 8 + __ffs64(diff);
+-	level += sizeof(u64);
+-
+-	diff = a->domain_id ^ b->domain_id;
+-	if (diff)
+-		return level * 8 + __ffs64(diff);
+-	level += sizeof(u64);
++	/* The next bit may not work on big endian */
++	seg_a = (unsigned long)a->type;
++	seg_b = (unsigned long)b->type;
++	if ((seg_a ^ seg_b) != 0)
++		goto differ;
++	level += sizeof(unsigned long);
++
++	seg_a = (unsigned long)a->domain_tag;
++	seg_b = (unsigned long)b->domain_tag;
++	if ((seg_a ^ seg_b) != 0)
++		goto differ;
++	level += sizeof(unsigned long);
+ 
+ 	i = sizeof(a->desc);
+ 	if (a->desc_len <= i)
+@@ -1168,7 +1158,7 @@
+ 	 * grants Search permission and that hasn't been revoked
+ 	 */
+ 	list_for_each_entry(keyring, &ns->keyring_name_list, name_link) {
+-		if (!kuid_has_mapping(ns, keyring->uid))
++		if (!kuid_has_mapping(ns, keyring->user->uid))
+ 			continue;
+ 
+ 		if (test_bit(KEY_FLAG_REVOKED, &keyring->flags))
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -107,7 +107,6 @@
+ 
+ struct key_tag {
+ 	struct rcu_head		rcu;
+-	atomic64_t		index_id;	/* Opaque keyring index ID */
+ 	refcount_t		usage;
+ 	bool			removed;	/* T when subject removed */
+ };
+@@ -130,8 +129,6 @@
+ 	struct key_type		*type;
+ 	struct key_tag		*domain_tag;	/* Domain of operation */
+ 	const char		*description;
+-	u64			type_id;	/* Cached index IDs */
+-	u64			domain_id;
+ };
+ 
+ union key_payload {
+@@ -253,8 +250,6 @@
+ 			struct key_type	*type;		/* type of key */
+ 			struct key_tag	*domain_tag;	/* Domain of operation */
+ 			char		*description;
+-			u64		type_id;
+-			u64		domain_id;
+ 		};
+ 	};
+ 
+--- a/include/linux/key-type.h
++++ b/include/linux/key-type.h
+@@ -159,7 +159,7 @@
+ 				     const void *in, const void *in2);
+ 
+ 	ANDROID_KABI_RESERVE(1);
+-	ANDROID_KABI_USE(2, atomic64_t index_id);
++	ANDROID_KABI_RESERVE(2);
+ 
+ 	/* internal fields */
+ 	struct list_head	link;		/* link in types list */
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2411,7 +2411,11 @@
+@@ -1965,8 +1965,6 @@
+  *	@qdisc_hash:		qdisc hash table
+  *	@watchdog_timeo:	Represents the timeout that is used by
+  *				the watchdog (see dev_watchdog())
+- *	@watchdog_lock:		protect watchdog_ref_held
+- *	@watchdog_ref_held:	True if the watchdog device ref is taken.
+  *	@watchdog_timer:	List of timers
+  *
+  *	@proto_down_reason:	reason a netdev interface is held down
+@@ -2411,7 +2409,7 @@
  	netdevice_tracker	dev_registered_tracker;
  	struct rtnl_hw_stats64	*offload_xstats_l3;
  
-+#ifdef __GENKSYMS__
+-	ANDROID_KABI_USE2(1, spinlock_t watchdog_lock, bool watchdog_ref_held);
 +	ANDROID_KABI_RESERVE(1);
-+#else
- 	ANDROID_KABI_USE2(1, spinlock_t watchdog_lock, bool watchdog_ref_held);
-+#endif
  	ANDROID_KABI_RESERVE(2);
  	ANDROID_KABI_RESERVE(3);
  	ANDROID_KABI_RESERVE(4);
-diff --git a/include/linux/pci.h b/include/linux/pci.h
---- a/include/linux/pci.h
-+++ b/include/linux/pci.h
-@@ -80,8 +80,12 @@
- 	struct pci_bus		*bus;		/* Bus this slot is on */
- 	struct list_head	list;		/* Node in list of slots */
- 	struct hotplug_slot	*hotplug;	/* Hotplug info (move here) */
-+#ifdef __GENKSYMS__
-+	unsigned char		number;		/* PCI_SLOT(pci_dev->devfn) */
-+#else
- 	u16			number;		/* PCI_SLOT(pci_dev->devfn) or PCI_SLOT_PLACEHOLDER */
- 	unsigned int		per_func_slot:1; /* Allow per function slot */
-+#endif
- 	struct kobject		kobj;
+--- a/include/linux/bpf.h
++++ b/include/linux/bpf.h
+@@ -328,10 +328,7 @@
+ 		memcpy(dst + curr_off, src + curr_off, next_off - curr_off);
+ 		curr_off = next_off + map->off_arr->field_sz[i];
+ 	}
+-	if (long_memcpy)
+-		memcpy(dst + curr_off, src + curr_off, round_up(map->value_size, 8) - curr_off);
+-	else
+-		memcpy(dst + curr_off, src + curr_off, map->value_size - curr_off);
++	memcpy(dst + curr_off, src + curr_off, map->value_size - curr_off);
+ }
+ 
+ static inline void copy_map_value(struct bpf_map *map, void *dst, void *src)
+@@ -992,18 +989,12 @@
+ }
+ 
+ #ifdef CONFIG_BPF_JIT
+-int bpf_trampoline_link_prog(struct bpf_tramp_link *link,
+-			     struct bpf_trampoline *tr,
+-			     struct bpf_prog *tgt_prog);
+-int bpf_trampoline_unlink_prog(struct bpf_tramp_link *link,
+-			       struct bpf_trampoline *tr,
+-			       struct bpf_prog *tgt_prog);
++int bpf_trampoline_link_prog(struct bpf_tramp_link *link, struct bpf_trampoline *tr);
++int bpf_trampoline_unlink_prog(struct bpf_tramp_link *link, struct bpf_trampoline *tr);
+ struct bpf_trampoline *bpf_trampoline_get(u64 key,
+ 					  struct bpf_attach_target_info *tgt_info);
+ void bpf_trampoline_put(struct bpf_trampoline *tr);
+ int arch_prepare_bpf_dispatcher(void *image, void *buf, s64 *funcs, int num_funcs);
+-
+-void bpf_trampoline_set_flags(struct bpf_trampoline *tr, u32 flags);
+ 
+ /*
+  * When the architecture supports STATIC_CALL replace the bpf_dispatcher_fn
+@@ -1080,14 +1071,12 @@
+ bool bpf_prog_has_trampoline(const struct bpf_prog *prog);
+ #else
+ static inline int bpf_trampoline_link_prog(struct bpf_tramp_link *link,
+-					   struct bpf_trampoline *tr,
+-					   struct bpf_prog *tgt_prog)
++					   struct bpf_trampoline *tr)
+ {
+ 	return -ENOTSUPP;
+ }
+ static inline int bpf_trampoline_unlink_prog(struct bpf_tramp_link *link,
+-					     struct bpf_trampoline *tr,
+-					     struct bpf_prog *tgt_prog)
++					     struct bpf_trampoline *tr)
+ {
+ 	return -ENOTSUPP;
+ }
+@@ -1112,7 +1101,6 @@
+ {
+ 	return false;
+ }
+-static inline void bpf_trampoline_set_flags(struct bpf_trampoline *tr, u32 flags) {}
+ #endif
+ 
+ struct bpf_func_info_aux {
+@@ -1185,9 +1173,6 @@
+ 	bool sleepable;
+ 	bool tail_call_reachable;
+ 	bool xdp_has_frags;
+-	bool is_extended; /* true if extended by freplace program */
+-	u64 prog_array_member_cnt; /* counts how many times as member of prog_array */
+-	struct mutex ext_mutex; /* mutex for is_extended and prog_array_member_cnt */
+ 	/* BTF_KIND_FUNC_PROTO for valid attach_btf_id */
+ 	const struct btf_type *attach_func_proto;
+ 	/* function name for valid attach_btf_id */
+@@ -1297,26 +1282,12 @@
+ 	enum bpf_link_type type;
+ 	const struct bpf_link_ops *ops;
+ 	struct bpf_prog *prog;
+-	/* rcu is used before freeing, work can be used to schedule that
+-	 * RCU-based freeing before that, so they never overlap
+-	 */
+-	union {
+-		struct rcu_head rcu;
+-		struct work_struct work;
+-	};
++	struct work_struct work;
  };
  
-diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
---- a/include/linux/sched/task.h
-+++ b/include/linux/sched/task.h
-@@ -38,7 +38,9 @@
- 	void *fn_arg;
- 	struct cgroup *cgrp;
- 	struct css_set *cset;
-+#ifndef __GENKSYMS__
- 	unsigned int kill_seq;
-+#endif
+ struct bpf_link_ops {
+ 	void (*release)(struct bpf_link *link);
+-	/* deallocate link resources callback, called without RCU grace period
+-	 * waiting
+-	 */
+ 	void (*dealloc)(struct bpf_link *link);
+-	/* deallocate link resources callback, called after RCU grace period;
+-	 * if underlying BPF program is sleepable we go through tasks trace
+-	 * RCU GP and then "classic" RCU GP
+-	 */
+-	void (*dealloc_deferred)(struct bpf_link *link);
+ 	int (*detach)(struct bpf_link *link);
+ 	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
+ 			   struct bpf_prog *old_prog);
+@@ -1788,7 +1759,6 @@
+ struct bpf_map *__bpf_map_get(struct fd f);
+ void bpf_map_inc(struct bpf_map *map);
+ void bpf_map_inc_with_uref(struct bpf_map *map);
+-struct bpf_map *__bpf_map_inc_not_zero(struct bpf_map *map, bool uref);
+ struct bpf_map * __must_check bpf_map_inc_not_zero(struct bpf_map *map);
+ void bpf_map_put_with_uref(struct bpf_map *map);
+ void bpf_map_put(struct bpf_map *map);
+--- a/include/linux/cgroup-defs.h
++++ b/include/linux/cgroup-defs.h
+@@ -424,11 +424,6 @@
+ 
+ 	int nr_threaded_children;	/* # of live threaded child cgroups */
+ 
+-	/*
+-	 * Sequence number for cgroup.kill. Incremented with both cgroup_mutex
+-	 * and css_set_lock held. Readers hold either one.
+-	 */
+-	unsigned int kill_seq;
+ 	struct kernfs_node *kn;		/* cgroup kernfs entry */
+ 	struct cgroup_file procs_file;	/* handle for "cgroup.procs" */
+ 	struct cgroup_file events_file;	/* handle for "cgroup.events" */
+--- a/include/linux/device-mapper.h
++++ b/include/linux/device-mapper.h
+@@ -362,11 +362,6 @@
+ 	bool discards_supported:1;
+ 
+ 	/*
+-	 * Set if this target requires stable data during writeback.
+-	 */
+-	bool needs_stable_writes:1;
+-
+-	/*
+ 	 * Set if we need to limit the number of in-flight bios when swapping.
+ 	 */
+ 	bool limit_swap_bios:1;
+@@ -445,12 +440,10 @@
+  */
+ void dm_consume_args(struct dm_arg_set *as, unsigned int num_args);
+ 
+-/*
+- *----------------------------------------------------------------
++/*-----------------------------------------------------------------
+  * Functions for creating and manipulating mapped devices.
+  * Drop the reference with dm_put when you finish with the object.
+- *----------------------------------------------------------------
+- */
++ *---------------------------------------------------------------*/
+ 
+ /*
+  * DM_ANY_MINOR chooses the next available minor number.
+@@ -531,11 +524,9 @@
+ int dm_get_geometry(struct mapped_device *md, struct hd_geometry *geo);
+ int dm_set_geometry(struct mapped_device *md, struct hd_geometry *geo);
+ 
+-/*
+- *---------------------------------------------------------------
++/*-----------------------------------------------------------------
+  * Functions for manipulating device-mapper tables.
+- *---------------------------------------------------------------
+- */
++ *---------------------------------------------------------------*/
+ 
+ /*
+  * First create an empty table.
+@@ -609,11 +600,9 @@
+  */
+ void dm_destroy_crypto_profile(struct blk_crypto_profile *profile);
+ 
+-/*
+- *---------------------------------------------------------------
++/*-----------------------------------------------------------------
+  * Macros.
+- *---------------------------------------------------------------
+- */
++ *---------------------------------------------------------------*/
+ #define DM_NAME "device-mapper"
+ 
+ #define DM_FMT(fmt) DM_NAME ": " DM_MSG_PREFIX ": " fmt "\n"
+--- a/include/linux/i3c/master.h
++++ b/include/linux/i3c/master.h
+@@ -219,8 +219,6 @@
+  *	  every time the I3C device is rediscovered with a different dynamic
+  *	  address assigned
+  * @bus: I3C bus this device is attached to
+- * @node: unregistered device list node, only for use by
+- *	  i3c_master_register_new_i3c_devs(), it is not protected by a lock
+  *
+  * I3C device object exposed to I3C device drivers. The takes care of linking
+  * this object to the relevant &struct_i3c_dev_desc one.
+@@ -231,7 +229,6 @@
+ 	struct device dev;
+ 	struct i3c_dev_desc *desc;
+ 	struct i3c_bus *bus;
+-	struct list_head node;
  };
  
  /*
-diff --git a/include/linux/unicode.h b/include/linux/unicode.h
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -72,16 +72,12 @@
+ /* return bus from PCI devid = ((u16)bus_number) << 8) | devfn */
+ #define PCI_BUS_NUM(x) (((x) >> 8) & 0xff)
+ 
+-/* Used to identify a slot as a placeholder */
+-#define PCI_SLOT_PLACEHOLDER	0xffff
+-
+ /* pci_slot represents a physical slot */
+ struct pci_slot {
+ 	struct pci_bus		*bus;		/* Bus this slot is on */
+ 	struct list_head	list;		/* Node in list of slots */
+ 	struct hotplug_slot	*hotplug;	/* Hotplug info (move here) */
+-	u16			number;		/* PCI_SLOT(pci_dev->devfn) or PCI_SLOT_PLACEHOLDER */
+-	unsigned int		per_func_slot:1; /* Allow per function slot */
++	unsigned char		number;		/* PCI_SLOT(pci_dev->devfn) */
+ 	struct kobject		kobj;
+ };
+ 
+@@ -891,7 +887,6 @@
+  *		function returns zero when the driver chooses to
+  *		take "ownership" of the device or an error code
+  *		(negative number) otherwise.
+- *		The pci_device_id parameter is only valid during probe.
+  *		The probe function always gets called from process
+  *		context, so it can sleep.
+  * @remove:	The remove() function gets called whenever a device
+--- a/include/linux/sched/task.h
++++ b/include/linux/sched/task.h
+@@ -38,7 +38,6 @@
+ 	void *fn_arg;
+ 	struct cgroup *cgrp;
+ 	struct css_set *cset;
+-	unsigned int kill_seq;
+ };
+ 
+ /*
 --- a/include/linux/unicode.h
 +++ b/include/linux/unicode.h
-@@ -51,7 +51,9 @@
+@@ -51,7 +51,6 @@
  	unsigned int version;
  	const struct utf8data *ntab[UTF8_NMAX];
  	const struct utf8data_table *tables;
-+#ifndef __GENKSYMS__
- 	struct rcu_head rcu;
-+#endif
+-	struct rcu_head rcu;
  };
  
  int utf8_validate(const struct unicode_map *um, const struct qstr *str);
-diff --git a/include/linux/usb/gadget.h b/include/linux/usb/gadget.h
 --- a/include/linux/usb/gadget.h
 +++ b/include/linux/usb/gadget.h
-@@ -113,7 +113,9 @@
+@@ -53,7 +53,6 @@
+  * @short_not_ok: When reading data, makes short packets be
+  *     treated as errors (queue stops advancing till cleanup).
+  * @dma_mapped: Indicates if request has been mapped to DMA (internal)
+- * @sg_was_mapped: Set if the scatterlist has been mapped before the request
+  * @complete: Function called when request completes, so this request and
+  *	its buffer may be re-used.  The function will always be called with
+  *	interrupts disabled, and it must not sleep.
+@@ -113,7 +112,6 @@
  	unsigned		zero:1;
  	unsigned		short_not_ok:1;
  	unsigned		dma_mapped:1;
-+#ifndef __GENKSYMS__
- 	unsigned		sg_was_mapped:1;
-+#endif
+-	unsigned		sg_was_mapped:1;
  
  	void			(*complete)(struct usb_ep *ep,
  					struct usb_request *req);
-diff --git a/include/net/dropreason.h b/include/net/dropreason.h
 --- a/include/net/dropreason.h
 +++ b/include/net/dropreason.h
-@@ -299,8 +299,10 @@
+@@ -68,7 +68,6 @@
+ 	FN(IP_INADDRERRORS)		\
+ 	FN(IP_INNOROUTES)		\
+ 	FN(PKT_TOO_BIG)			\
+-	FN(TC_CHAIN_NOTFOUND)		\
+ 	FNe(MAX)
+ 
+ /**
+@@ -299,8 +298,6 @@
  	 * MTU)
  	 */
  	SKB_DROP_REASON_PKT_TOO_BIG,
-+#ifndef __GENKSYMS__
- 	/** @SKB_DROP_REASON_TC_CHAIN_NOTFOUND: tc chain lookup failed. */
- 	SKB_DROP_REASON_TC_CHAIN_NOTFOUND,
-+#endif
+-	/** @SKB_DROP_REASON_TC_CHAIN_NOTFOUND: tc chain lookup failed. */
+-	SKB_DROP_REASON_TC_CHAIN_NOTFOUND,
  	/**
  	 * @SKB_DROP_REASON_MAX: the maximum of drop reason, which shouldn't be
  	 * used as a real 'reason'
-diff --git a/include/net/dsa.h b/include/net/dsa.h
 --- a/include/net/dsa.h
 +++ b/include/net/dsa.h
-@@ -310,7 +310,9 @@
+@@ -310,7 +310,6 @@
  	struct devlink_port	devlink_port;
  	struct phylink		*pl;
  	struct phylink_config	pl_config;
-+#ifndef __GENKSYMS__
- 	netdevice_tracker	conduit_tracker;
-+#endif
+-	netdevice_tracker	conduit_tracker;
  	struct dsa_lag		*lag;
  	struct net_device	*hsr_dev;
  
-diff --git a/include/net/inet_connection_sock.h b/include/net/inet_connection_sock.h
 --- a/include/net/inet_connection_sock.h
 +++ b/include/net/inet_connection_sock.h
-@@ -97,10 +97,12 @@
+@@ -66,9 +66,6 @@
+  * @icsk_bind2_hash:	   Bind node in the bhash2 table
+  * @icsk_timeout:	   Timeout
+  * @icsk_retransmit_timer: Resend (no ack)
+- * @icsk_delack_timer:     Delayed ACK timer
+- * @icsk_keepalive_timer:  Keepalive timer
+- * @mptcp_tout_timer:      MPTCP timeout timer
+  * @icsk_rto:		   Retransmit timeout
+  * @icsk_pmtu_cookie	   Last pmtu seen by socket
+  * @icsk_ca_ops		   Pluggable congestion control hook
+@@ -95,12 +92,8 @@
+ 	struct inet_bind_bucket	  *icsk_bind_hash;
+ 	struct inet_bind2_bucket  *icsk_bind2_hash;
  	unsigned long		  icsk_timeout;
- 	struct timer_list	  icsk_retransmit_timer;
- 	struct timer_list	  icsk_delack_timer;
-+#ifndef __GENKSYMS__
- 	union {
- 		struct timer_list icsk_keepalive_timer;
- 		struct timer_list mptcp_tout_timer;
- 	};
-+#endif
+-	struct timer_list	  icsk_retransmit_timer;
+-	struct timer_list	  icsk_delack_timer;
+-	union {
+-		struct timer_list icsk_keepalive_timer;
+-		struct timer_list mptcp_tout_timer;
+-	};
++ 	struct timer_list	  icsk_retransmit_timer;
++ 	struct timer_list	  icsk_delack_timer;
  	__u32			  icsk_rto;
  	__u32                     icsk_rto_min;
  	__u32                     icsk_delack_max;
-diff --git a/include/net/netns/mpls.h b/include/net/netns/mpls.h
 --- a/include/net/netns/mpls.h
 +++ b/include/net/netns/mpls.h
-@@ -16,7 +16,9 @@
+@@ -16,7 +16,6 @@
  	int default_ttl;
  	size_t platform_labels;
  	struct mpls_route __rcu * __rcu *platform_label;
-+#ifndef __GENKSYMS__
- 	seqcount_t platform_label_seq;
-+#endif
+-	seqcount_t platform_label_seq;
  
  	struct ctl_table_header *ctl;
  };
-diff --git a/include/net/netns/xfrm.h b/include/net/netns/xfrm.h
 --- a/include/net/netns/xfrm.h
 +++ b/include/net/netns/xfrm.h
-@@ -24,7 +24,9 @@
+@@ -24,7 +24,6 @@
  struct xfrm_policy_hthresh {
  	struct work_struct	work;
  	seqlock_t		lock;
-+#ifndef __GENKSYMS__
- 	bool			work_disabled;
-+#endif
+-	bool			work_disabled;
  	u8			lbits4;
  	u8			rbits4;
  	u8			lbits6;
-diff --git a/include/net/nexthop.h b/include/net/nexthop.h
 --- a/include/net/nexthop.h
 +++ b/include/net/nexthop.h
-@@ -97,7 +97,11 @@
+@@ -97,7 +97,7 @@
  
  struct nh_grp_entry {
  	struct nexthop	*nh;
-+#ifdef __GENKSYMS__
+-	u16		weight;
 +	u8		weight;
-+#else
- 	u16		weight;
-+#endif
  
  	union {
  		struct {
-@@ -180,7 +184,11 @@
+@@ -173,14 +173,14 @@
+ 		__be32 ipv4;
+ 		struct in6_addr ipv6;
+ 	};
+-	u32 id;
+ 	u8 is_reject:1,
+ 	   is_fdb:1,
+ 	   has_encap:1;
  };
  
  struct nh_notifier_grp_entry_info {
-+#ifdef __GENKSYMS__
+-	u16 weight;
 +	u8 weight;
-+#else
- 	u16 weight;
-+#endif
++	u32 id;
  	struct nh_notifier_single_info nh;
  };
  
-diff --git a/include/net/pkt_sched.h b/include/net/pkt_sched.h
 --- a/include/net/pkt_sched.h
 +++ b/include/net/pkt_sched.h
-@@ -218,7 +218,9 @@
+@@ -218,13 +218,12 @@
  
  struct tc_skb_cb {
  	struct qdisc_skb_cb qdisc_cb;
-+#ifndef __GENKSYMS__
- 	u32 drop_reason;
-+#endif
- 
- 	u16 zone; /* Only valid if post_ct = true */
+-	u32 drop_reason;
+-
+-	u16 zone; /* Only valid if post_ct = true */
++
  	u16 mru;
-diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
+ 	u8 post_ct:1;
+ 	u8 post_ct_snat:1;
+ 	u8 post_ct_dnat:1;
++	u16 zone; /* Only valid if post_ct = true */
+ };
+ 
+ static inline struct tc_skb_cb *tc_skb_cb(const struct sk_buff *skb)
 --- a/include/net/sch_generic.h
 +++ b/include/net/sch_generic.h
-@@ -118,7 +118,9 @@
+@@ -118,7 +118,6 @@
  	struct qdisc_skb_head	q;
  	struct gnet_stats_basic_sync bstats;
  	struct gnet_stats_queue	qstats;
-+#ifndef __GENKSYMS__
- 	int                     owner;
-+#endif
+-	int                     owner;
  	unsigned long		state;
  	unsigned long		state2; /* must be written under qdisc spinlock */
  	struct Qdisc            *next_sched;
-@@ -383,10 +385,12 @@
+@@ -333,6 +332,7 @@
+ 	ANDROID_KABI_RESERVE(1);
+ };
+ 
++
+ struct tcf_result {
+ 	union {
+ 		struct {
+@@ -340,6 +340,7 @@
+ 			u32		classid;
+ 		};
+ 		const struct tcf_proto *goto_tp;
++
+ 	};
+ };
+ 
+@@ -383,10 +384,6 @@
  						struct nlattr **tca,
  						struct netlink_ext_ack *extack);
  	void			(*tmplt_destroy)(void *tmplt_priv);
-+#ifndef __GENKSYMS__
- 	void			(*tmplt_reoffload)(struct tcf_chain *chain,
- 						   bool add,
- 						   flow_setup_cb_t *cb,
- 						   void *cb_priv);
-+#endif
+-	void			(*tmplt_reoffload)(struct tcf_chain *chain,
+-						   bool add,
+-						   flow_setup_cb_t *cb,
+-						   void *cb_priv);
  
  	/* rtnetlink specific */
  	int			(*dump)(struct net*, struct tcf_proto*, void *,
-@@ -433,8 +437,10 @@
+@@ -433,8 +430,6 @@
  	 */
  	spinlock_t		lock;
  	bool			deleting;
-+#ifndef __GENKSYMS__
- 	bool			counted;
- 	bool			usesw;
-+#endif
+-	bool			counted;
+-	bool			usesw;
  	refcount_t		refcnt;
  	struct rcu_head		rcu;
  	struct hlist_node	destroy_ht_node;
-@@ -483,7 +489,9 @@
+@@ -483,7 +478,6 @@
  	struct flow_block flow_block;
  	struct list_head owner_list;
  	bool keep_dst;
-+#ifndef __GENKSYMS__
- 	atomic_t useswcnt;
-+#endif
+-	atomic_t useswcnt;
  	atomic_t offloadcnt; /* Number of oddloaded filters */
  	unsigned int nooffloaddevcnt; /* Number of devs unable to do offload */
  	unsigned int lockeddevcnt; /* Number of devs that require rtnl lock. */
-diff --git a/include/net/sock.h b/include/net/sock.h
+@@ -1055,17 +1049,12 @@
+ 	skb = __skb_dequeue(&sch->gso_skb);
+ 	if (skb) {
+ 		sch->q.qlen--;
+-		qdisc_qstats_backlog_dec(sch, skb);
+ 		return skb;
+ 	}
+-	if (direct) {
+-		skb = __qdisc_dequeue_head(&sch->q);
+-		if (skb)
+-			qdisc_qstats_backlog_dec(sch, skb);
+-		return skb;
+-	} else {
++	if (direct)
++		return __qdisc_dequeue_head(&sch->q);
++	else
+ 		return sch->dequeue(sch);
+-	}
+ }
+ 
+ static inline struct sk_buff *qdisc_dequeue_head(struct Qdisc *sch)
 --- a/include/net/sock.h
 +++ b/include/net/sock.h
-@@ -465,10 +465,14 @@
+@@ -317,13 +317,9 @@
+   *	@sk_txrehash: enable TX hash rethink
+   *	@sk_filter: socket filtering instructions
+   *	@sk_timer: sock cleanup timer
+-  *	@mptcp_retransmit_timer: MPTCP retransmit timer
+   *	@sk_stamp: time stamp of last packet received
+   *	@sk_stamp_seq: lock for accessing sk_stamp on 32 bit architectures only
+   *	@sk_tsflags: SO_TIMESTAMPING flags
+-  *	@sk_use_task_frag: allow sk_page_frag() to use current->task_frag.
+-  *			   Sockets that can be used under memory reclaim should
+-  *			   set this to false.
+   *	@sk_bind_phc: SO_TIMESTAMPING bind PHC index of PTP virtual clock
+   *	              for timestamping
+   *	@sk_tskey: counter to disambiguate concurrent tstamp requests
+@@ -465,10 +461,7 @@
  	__u32			sk_dst_pending_confirm;
  	u32			sk_pacing_status; /* see enum sk_pacing */
  	long			sk_sndtimeo;
-+#ifdef __GENKSYMS__
+-	union {
+-		struct timer_list sk_timer;
+-		struct timer_list mptcp_retransmit_timer;
+-	};
 +	struct timer_list	sk_timer;
-+#else
- 	union {
- 		struct timer_list sk_timer;
- 		struct timer_list mptcp_retransmit_timer;
- 	};
-+#endif
  	__u32			sk_priority;
  	__u32			sk_mark;
  	unsigned long		sk_pacing_rate; /* bytes per second */
-diff --git a/include/net/strparser.h b/include/net/strparser.h
+@@ -558,7 +551,7 @@
+ #endif
+ 
+ 	ANDROID_OEM_DATA(1);
+-	ANDROID_KABI_USE(1, bool sk_use_task_frag);
++	ANDROID_KABI_RESERVE(1);
+ 	ANDROID_KABI_RESERVE(2);
+ 	ANDROID_KABI_RESERVE(3);
+ 	ANDROID_KABI_RESERVE(4);
+@@ -1997,8 +1990,6 @@
+ }
+ 
+ void *sock_kmalloc(struct sock *sk, int size, gfp_t priority);
+-void *sock_kmemdup(struct sock *sk, const void *src,
+-		   int size, gfp_t priority);
+ void sock_kfree_s(struct sock *sk, void *mem, int size);
+ void sock_kzfree_s(struct sock *sk, void *mem, int size);
+ void sk_send_sigurg(struct sock *sk);
+@@ -2711,17 +2702,14 @@
+  * socket operations and end up recursing into sk_page_frag()
+  * while it's already in use: explicitly avoid task page_frag
+  * usage if the caller is potentially doing any of them.
+- * This assumes that page fault handlers use the GFP_NOFS flags or
+- * explicitly disable sk_use_task_frag.
++ * This assumes that page fault handlers use the GFP_NOFS flags.
+  *
+  * Return: a per task page_frag if context allows that,
+  * otherwise a per socket one.
+  */
+ static inline struct page_frag *sk_page_frag(struct sock *sk)
+ {
+-	if (sk->sk_use_task_frag &&
+-	    (sk->sk_allocation & (__GFP_DIRECT_RECLAIM | __GFP_MEMALLOC |
+-				  __GFP_FS)) ==
++	if ((sk->sk_allocation & (__GFP_DIRECT_RECLAIM | __GFP_MEMALLOC | __GFP_FS)) ==
+ 	    (__GFP_DIRECT_RECLAIM | __GFP_FS))
+ 		return &current->task_frag;
+ 
 --- a/include/net/strparser.h
 +++ b/include/net/strparser.h
-@@ -91,11 +91,19 @@
+@@ -91,11 +91,11 @@
  struct strparser {
  	struct sock *sk;
  
-+#ifdef __GENKSYMS__
+-	u8 stopped;
+-	u8 paused;
+-	u8 aborted;
+-	u8 interrupted;
+-	u8 unrecov_intr;
 +	u32 stopped : 1;
 +	u32 paused : 1;
 +	u32 aborted : 1;
 +	u32 interrupted : 1;
 +	u32 unrecov_intr : 1;
-+#else
- 	u8 stopped;
- 	u8 paused;
- 	u8 aborted;
- 	u8 interrupted;
- 	u8 unrecov_intr;
-+#endif
  
  	struct sk_buff **skb_nextp;
  	struct sk_buff *skb_head;
-diff --git a/include/net/tcp.h b/include/net/tcp.h
 --- a/include/net/tcp.h
 +++ b/include/net/tcp.h
-@@ -2152,9 +2152,14 @@
+@@ -43,7 +43,6 @@
+ #ifndef __GENKSYMS__
+ #include <net/xfrm.h>
+ #endif
+-#include <net/secure_seq.h>
+ 
+ #include <linux/seq_file.h>
+ #include <linux/memcontrol.h>
+@@ -1021,7 +1020,6 @@
+ {
+ 	return likely(tcp_skb_can_collapse_to(to) &&
+ 		      mptcp_skb_can_collapse(to, from) &&
+-		      !skb_cmp_decrypted(to, from) &&
+ 		      skb_pure_zcopy_same(to, from));
+ }
+ 
+@@ -1484,11 +1482,6 @@
+ 	return tcp_win_from_space(sk, READ_ONCE(sk->sk_rcvbuf));
+ }
+ 
+-static inline u32 tcp_dst_advmss(const struct dst_entry *dst)
+-{
+-	return max_t(u32, dst_metric_advmss(dst), TCP_MIN_MSS);
+-}
+-
+ static inline void __tcp_adjust_rcv_ssthresh(struct sock *sk, u32 new_ssthresh)
+ {
+ 	int unused_mem = sk_unused_reserved_mem(sk);
+@@ -1647,8 +1640,6 @@
+ 
+ bool tcp_oow_rate_limited(struct net *net, const struct sk_buff *skb,
+ 			  int mib_idx, u32 *last_oow_ack_time);
+-void tcp_reqsk_send_challenge_ack(struct sock *sk, struct sk_buff *skb,
+-				  struct request_sock *req);
+ 
+ static inline void tcp_mib_init(struct net *net)
+ {
+@@ -2152,9 +2143,8 @@
  				       struct sk_buff *skb,
  				       struct flowi *fl,
  				       struct request_sock *req);
-+#ifdef __GENKSYMS__
+-	union tcp_seq_and_ts_off (*init_seq_and_ts_off)(
+-					const struct net *net,
+-					const struct sk_buff *skb);
 +	u32 (*init_seq)(const struct sk_buff *skb);
 +	u32 (*init_ts_off)(const struct net *net, const struct sk_buff *skb);
-+#else
- 	union tcp_seq_and_ts_off (*init_seq_and_ts_off)(
- 					const struct net *net,
- 					const struct sk_buff *skb);
-+#endif
  	int (*send_synack)(const struct sock *sk, struct dst_entry *dst,
  			   struct flowi *fl, struct request_sock *req,
  			   struct tcp_fastopen_cookie *foc,
-diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
---- a/kernel/sched/sched.h
-+++ b/kernel/sched/sched.h
-@@ -1177,7 +1177,9 @@
- 	unsigned int		core_forceidle_seq;
- 	unsigned int		core_forceidle_occupation;
- 	u64			core_forceidle_start;
-+#ifndef __GENKSYMS__
- 	unsigned int		core_pick_in_flight;
-+#endif
- #endif
- 
- 	ANDROID_VENDOR_DATA_ARRAY(1, 1);
-diff --git a/sound/usb/card.h b/sound/usb/card.h
 --- a/sound/usb/card.h
 +++ b/sound/usb/card.h
-@@ -91,7 +91,11 @@
+@@ -91,7 +91,7 @@
  	struct snd_urb_ctx urb[MAX_URBS];
  
  	struct snd_usb_packet_info {
-+#ifdef __GENKSYMS__
+-		int packet_size[MAX_PACKS_HS];
 +		uint32_t packet_size[MAX_PACKS_HS];
-+#else
- 		int packet_size[MAX_PACKS_HS];
-+#endif
  		int packets;
  	} next_packet[MAX_URBS];
  	unsigned int next_packet_head;	/* ring buffer offset to read */
-@@ -117,7 +121,9 @@
+@@ -117,7 +117,6 @@
  	unsigned int phase;		/* phase accumulator */
  	unsigned int maxpacksize;	/* max packet size in bytes */
  	unsigned int maxframesize;      /* max packet size in frames */
-+#ifndef __GENKSYMS__
- 	unsigned int max_urb_packs;	/* packets allocated per data URB */
-+#endif
+-	unsigned int max_urb_packs;	/* packets allocated per data URB */
  	unsigned int max_urb_frames;	/* max URB size in frames */
  	unsigned int curpacksize;	/* current packet size in bytes (for capture) */
  	unsigned int curframesize;      /* current packet size in frames (for capture) */
+--- a/block/blk-cgroup.h
++++ b/block/blk-cgroup.h
+@@ -125,9 +125,6 @@
+ 	/* the blkg and policy id this per-policy data belongs to */
+ 	struct blkcg_gq			*blkg;
+ 	int				plid;
+-	bool				online;
+-
+-	struct rcu_head			rcu_head;
+ };
+ 
+ /*
+--- a/kernel/futex/core.c
++++ b/kernel/futex/core.c
+@@ -348,7 +348,7 @@
+ 		}
+ 
+ 		key->both.offset |= FUT_OFF_MMSHARED;
+-		key->private.mm_seq = get_object_id(&mm->abi_extend->futex_unique_id);
++		key->private.mm = mm;
+ 		key->private.address = address;
+ 
+ 	} else {
